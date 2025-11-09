@@ -1,6 +1,7 @@
 from expense_tracker.core.repository import TransactionRepository
 from tkinter import Tk, ttk
 from gui.main_window import MainWindow
+from expense_tracker.version import versions
 
 def main():
     # Get the absolute path to the database file
@@ -19,4 +20,5 @@ def main():
 
 
 if __name__ == "__main__":
+    versions()
     main()
