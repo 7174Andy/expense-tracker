@@ -36,6 +36,7 @@ wheels/
 MANIFEST
 uv.lock
 .ruff_cache/
+.pytest_cache/
 
 # Database files
 *.db

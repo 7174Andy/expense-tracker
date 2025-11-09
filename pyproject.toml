@@ -1,16 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "expense-tracker"
-version = "0.1.0"
+name = "expense_tracker"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+dynamic = ["version"]
 dependencies = [
     "pdfplumber>=0.11.7",
     "ttkbootstrap>=1.18.1",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pytest>=8.4.2",
     "ruff>=0.14.4",
 ]
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*", "docs"]
+
+[tool.setuptools.dynamic]
+version = {attr = "expense_tracker.version.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
