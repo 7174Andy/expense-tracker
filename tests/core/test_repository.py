@@ -34,7 +34,7 @@ def test_get_non_existent_transaction(in_memory_repo):
     assert transaction is None
 
 def test_get_all_transactions(in_memory_repo):
-    repo = in_memory_repo
+    repo: TransactionRepository = in_memory_repo
     repo.add_transaction("2023-01-01", 10.0, "Food", "Lunch")
     repo.add_transaction("2023-01-02", 20.0, "Utilities", "Electricity")
     transactions = repo.get_all_transactions()
@@ -72,3 +72,26 @@ def test_delete_transaction(in_memory_repo):
     # Ensure no other transactions were affected
     transactions = repo.get_all_transactions()
     assert len(transactions) == 0
+
+def test_delete_multiple_transactions(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    id1 = repo.add_transaction("2023-01-01", 10.0, "Food", "Lunch")
+    id2 = repo.add_transaction("2023-01-01", 15.0, "Food", "Dinner")
+    id3 = repo.add_transaction("2023-01-01", 5.0, "Transport", "Taxi")
+    
+    # Test deleting multiple transactions
+    deleted_rows = repo.delete_multiple_transactions([id1, id3])
+    assert deleted_rows == 2
+    
+    assert repo.get_transaction(id1) is None
+    assert repo.get_transaction(id2) is not None
+    assert repo.get_transaction(id3) is None
+    
+    remaining_transactions = repo.get_all_transactions()
+    assert len(remaining_transactions) == 1
+    assert remaining_transactions[0]["id"] == id2
+    
+    # Test deleting with an empty list
+    deleted_rows = repo.delete_multiple_transactions([])
+    assert deleted_rows == 0
+    assert len(repo.get_all_transactions()) == 1
