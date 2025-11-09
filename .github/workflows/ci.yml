@@ -1,68 +1,66 @@
 name: CI
 
 on:
-    pull_request:
-        types: [opened, reopened, synchronize]
-        paths:
-            - "/expense_tracker/**"
-            - "tests/**"
-            - ".github/workflows/ci.yml"
-            - "pyproject.toml"
-    push:
-        branches:
-            - main
-        paths:
-            - "/expense_tracker/**"
-            - "tests/**"
-            - ".github/workflows/ci.yml"
-            - "pyproject.toml"
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - "/expense_tracker/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - "pyproject.toml"
+  push:
+    branches:
+      - main
+    paths:
+      - "/expense_tracker/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - "pyproject.toml"
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up UV
-              uses: astral-sh/setup-uv@v6
-              with:
-                  python-version: "3.12"
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
 
-            - name: Install dependencies
-              run: |
-                  uv sync --extra dev
+      - name: Install dependencies
+        run: |
+          uv sync --extra dev
 
-            - name: Run linter
-              run: |
-                  uv run ruff check expense_tracker tests
+      - name: Run linter
+        run: |
+          uv run ruff check expense_tracker tests
 
-    test:
-        strategy:
-            matrix:
-                os: ["ubuntu", "windows", "mac"]
-                include:
-                    - os: "ubuntu"
-                      runs-on: ubuntu-latest
-                    - os: "windows"
-                      runs-on: windows-latest
-                    - os: "mac"
-                      runs-on: macos-latest
-        name: Test on ${{ matrix.os }}
-        runs-on: ${{ matrix.runs-on }}
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  test:
+    strategy:
+      matrix:
+        os: ["windows", "mac"]
+        include:
+          - os: "windows"
+            runs-on: windows-latest
+          - os: "mac"
+            runs-on: macos-latest
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up UV
-              uses: astral-sh/setup-uv@v6
-              with:
-                  python-version: "3.12"
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
 
-            - name: Install dependencies
-              run: |
-                  uv sync --extra dev
+      - name: Install dependencies
+        run: |
+          uv sync --extra dev
 
-            - name: Run tests
-              run: |
-                  uv run pytest tests/ -v
+      - name: Run tests
+        run: |
+          uv run pytest tests/ -v
