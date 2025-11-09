@@ -1,5 +1,5 @@
 [project]
-name = "expense-tracker"
+name = "expense_tracker"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
