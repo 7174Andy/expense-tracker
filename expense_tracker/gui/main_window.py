@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 
 from expense_tracker.core.repository import TransactionRepository
 from expense_tracker.gui.dialogs.add_expense import AddExpenseDialog
+from expense_tracker.gui.dialogs.edit_expense import EditExpenseDialog
 from expense_tracker.gui.dialogs.upload import UploadDialog
 
 
@@ -11,6 +12,7 @@ class MainWindow(tk.Frame):
         super().__init__(master)
         self.repo: TransactionRepository = repo
         self.master = master
+        self._active_dialog: tk.Toplevel | None = None
         self.pack(fill=tk.BOTH, expand=True)
         self._build_toolbar()
         self._build_body()
@@ -58,14 +60,10 @@ class MainWindow(tk.Frame):
         return ids
 
     def _upload_statement(self):
-        dialog = UploadDialog(self.master, self.repo)
-        self.master.wait_window(dialog)
-        self.refresh()
+        self._open_dialog(UploadDialog, self.repo)
 
     def _add_transaction(self):
-        dialog = AddExpenseDialog(self.master, self.repo)
-        self.master.wait_window(dialog)
-        self.refresh()
+        self._open_dialog(AddExpenseDialog, self.repo)
 
     def _edit_transaction(self):
         transaction_ids = self._get_selected_ids()
@@ -77,7 +75,7 @@ class MainWindow(tk.Frame):
             messagebox.showwarning("Multiple Selection", "Please select only one transaction to edit.")
             return
         
-        messagebox.showinfo("Edit Transaction", f"Editing transaction ID: {transaction_ids[0]}")
+        self._open_dialog(EditExpenseDialog, self.repo, transaction_ids[0])
     
     def _delete_transaction(self):
         transaction_ids = self._get_selected_ids()
@@ -99,3 +97,29 @@ class MainWindow(tk.Frame):
     def _search_transactions(self):
         query = self.qvar.get()
         messagebox.showinfo("Search Transactions", f"Search for: {query}")
+    
+    def _open_dialog(self, dialog_class, *args, **kwargs):
+        if self._active_dialog is not None and self._active_dialog.winfo_exists():
+            self._active_dialog.lift()
+            self._active_dialog.focus_set()
+            return
+
+        # Create a new dialog
+        dialog = dialog_class(self.master, *args, **kwargs)
+        self._active_dialog = dialog
+
+        # Cloas handler
+        def on_close():
+            if dialog.winfo_exists():
+                dialog.destroy()
+            self._active_dialog = None
+            self.refresh()
+        
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+        dialog.transient(self.master)
+        dialog.grab_set()
+
+        self.master.wait_window(dialog)
+
+        self._active_dialog = None
+        self.refresh()
