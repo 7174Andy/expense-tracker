@@ -12,7 +12,6 @@ class MainWindow(tk.Frame):
         self.repo: TransactionRepository = repo
         self.master = master
         self.pack(fill=tk.BOTH, expand=True)
-        self.selected = None
         self._build_toolbar()
         self._build_body()
         self.refresh()
@@ -28,7 +27,6 @@ class MainWindow(tk.Frame):
         self.tree.pack(fill=tk.BOTH, expand=True)
 
         # Bind events
-        self.tree.bind('<ButtonRelease-1>', self.select_item)
         self.tree.bind('<Double-1>', lambda e: self._edit_transaction())
 
     
@@ -51,10 +49,13 @@ class MainWindow(tk.Frame):
         ttk.Button(bar, text="Search", command=self._search_transactions).pack(side=tk.LEFT, padx=5, pady=5)
         
 
-    def select_item(self, event):
-        item = self.tree.focus()
-        if item:
-            self.selected = self.tree.item(item, "values")
+    def _get_selected_ids(self) -> list[int]:
+        ids = []
+        for item in self.tree.selection():
+            item_data = self.tree.item(item, "values")
+            if item_data:
+                ids.append(int(item_data[0]))
+        return ids
 
     def _upload_statement(self):
         dialog = UploadDialog(self.master, self.repo)
@@ -67,29 +68,33 @@ class MainWindow(tk.Frame):
         self.refresh()
 
     def _edit_transaction(self):
-        if not self.selected:
+        transaction_ids = self._get_selected_ids()
+        if not transaction_ids:
             messagebox.showwarning("No selection", "Please select a transaction to edit.")
             return
-        messagebox.showinfo("Edit Transaction", "Editing transaction with ID: {}".format(self.selected[0]))
+        
+        if len(transaction_ids) > 1:
+            messagebox.showwarning("Multiple Selection", "Please select only one transaction to edit.")
+            return
+        
+        messagebox.showinfo("Edit Transaction", f"Editing transaction ID: {transaction_ids[0]}")
     
     def _delete_transaction(self):
-        if not self.selected:
+        transaction_ids = self._get_selected_ids()
+
+        if not transaction_ids:
             messagebox.showwarning("No selection", "Please select a transaction to delete.")
             return
-
-        transaction_id = self.selected[0]
-        details = f"ID: {self.selected[0]}\nDate: {self.selected[1]}\nAmount: {self.selected[2]}\nCategory: {self.selected[3]}\nDescription: {self.selected[4]}"
         
         confirm = messagebox.askyesno(
             "Delete Transaction", 
-            f"Are you sure you want to delete the following transaction?\n\n{details}"
+            "Are you sure you want to delete the selected transaction?"
         )
 
         if confirm:
-            self.repo.delete_transaction(transaction_id)
-            messagebox.showinfo("Success", "Transaction deleted successfully.")
+            deleted = self.repo.delete_multiple_transactions(transaction_ids)
+            messagebox.showinfo("Success", f"Deleted {deleted} transaction(s) successfully.")
             self.refresh()
-            self.selected = None
 
     def _search_transactions(self):
         query = self.qvar.get()
