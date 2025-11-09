@@ -1,4 +1,7 @@
+import logging
 import sqlite3
+
+logger = logging.getLogger(__name__)
 
 class TransactionRepository:
     """
@@ -8,6 +11,7 @@ class TransactionRepository:
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._init_schema()
+        logger.info("Initialized database schema")
 
     def _init_schema(self):
         self.conn.executescript("""

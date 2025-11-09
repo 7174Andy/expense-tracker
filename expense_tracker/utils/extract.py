@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 
 DATE_RX   = re.compile(r"^\d{2}/\d{2}/\d{2}$")
-AMOUNT_RX = re.compile(r"^-?\$?\s?\d[\d,]*\.?\d{0,2}$")
+AMOUNT_RX = re.compile(r"^(?:-?\$?\s?\d[\d,]*\.?\d{0,2}|\(-?\$?\s?\d[\d,]*\.?\d{0,2}\))$")
 
 def parse_bofa_page(page):
     """Rebuild rows by grouping words by y-position instead of trusting pdfplumber's table."""

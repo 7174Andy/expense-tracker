@@ -43,3 +43,6 @@ uv.lock
 
 # VSCode files
 .vscode/
+
+# DS_Store files
+.DS_Store
