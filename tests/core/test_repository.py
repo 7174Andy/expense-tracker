@@ -95,3 +95,14 @@ def test_delete_multiple_transactions(in_memory_repo):
     deleted_rows = repo.delete_multiple_transactions([])
     assert deleted_rows == 0
     assert len(repo.get_all_transactions()) == 1
+
+def test_update_transaction(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    transaction_id = repo.add_transaction(str(date.today()), 100.0, "Food", "Groceries")
+    
+    repo.update_transaction(transaction_id, {"amount": 120.0, "category": "Shopping"})
+    
+    updated_transaction = repo.get_transaction(transaction_id)
+    assert updated_transaction["amount"] == 120.0
+    assert updated_transaction["category"] == "Shopping"
+    assert updated_transaction["description"] == "Groceries" # Should remain unchanged
