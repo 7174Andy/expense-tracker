@@ -61,6 +61,12 @@ jobs:
         run: |
           uv sync --extra dev
 
+      - name: Debug repo layout
+        run: |
+          pwd
+          ls
+          ls expense_tracker || echo "no expense_tracker directory!"
+
       - name: Run tests
         run: |
           uv run pytest tests/ -v
