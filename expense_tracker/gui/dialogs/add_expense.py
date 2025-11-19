@@ -1,6 +1,8 @@
 from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox
+
+from expense_tracker.core.model import Transaction
 from expense_tracker.core.repository import TransactionRepository
 
 class AddExpenseDialog(tk.Toplevel):
@@ -57,15 +59,17 @@ class AddExpenseDialog(tk.Toplevel):
             return
 
         try:
-            transaction_id = self.repo.add_transaction(
-                date=str(date.today()),
+            transaction = Transaction(
+                id=None,
+                date=date.today(),
                 amount=amount,
                 category=self.category_var.get() or "Uncategorized",
-                description=self.description_var.get() or ""
+                description=self.description_var.get() or "",
             )
-            self.result = transaction_id
+            saved_transaction = self.repo.add_transaction(transaction)
+            self.result = saved_transaction.id
             self.destroy()
-            messagebox.showinfo("Success", f"Transaction added with ID: {transaction_id}")
+            messagebox.showinfo("Success", f"Transaction added with ID: {saved_transaction.id}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add transaction: {e}")
             return

@@ -48,9 +48,9 @@ class EditExpenseDialog(tk.Toplevel):
     def _load_transaction_data(self):
         transaction = self.repo.get_transaction(self.transaction_id)
         if transaction:
-            self.amount_var.set(transaction["amount"])
-            self.category_var.set(transaction["category"])
-            self.description_var.set(transaction["description"])
+            self.amount_var.set(str(transaction.amount))
+            self.category_var.set(transaction.category)
+            self.description_var.set(transaction.description)
 
     def _on_save(self):
         raw = self.amount_var.get()

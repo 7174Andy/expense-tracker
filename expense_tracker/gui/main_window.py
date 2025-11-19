@@ -35,8 +35,18 @@ class MainWindow(tk.Frame):
     def refresh(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for r in self.repo.get_all_transactions():
-            self.tree.insert("", tk.END, values=(r["id"], r["date"], r["amount"], r["category"], r["description"]))
+        for transaction in self.repo.get_all_transactions():
+            self.tree.insert(
+                "",
+                tk.END,
+                values=(
+                    transaction.id,
+                    transaction.date.isoformat(),
+                    transaction.amount,
+                    transaction.category,
+                    transaction.description,
+                ),
+            )
     
     def _build_toolbar(self):
         bar = tk.Frame(self)

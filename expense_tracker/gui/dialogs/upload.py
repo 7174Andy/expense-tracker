@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from datetime import datetime, date
 
+from expense_tracker.core.model import Transaction
 from expense_tracker.core.repository import TransactionRepository
 from expense_tracker.utils.extract import parse_bofa_statement_pdf
 
@@ -46,12 +48,14 @@ class UploadDialog(tk.Toplevel):
         try:
             transactions = parse_bofa_statement_pdf(file_path)
             for t in transactions:
-                self.repo.add_transaction(
-                    date=t["date"],
+                transaction = Transaction(
+                    id=None,
+                    date=self._parse_date(t["date"]),
                     amount=t["amount"],
                     category="Uncategorized",
-                    description=t["description"]
+                    description=t["description"],
                 )
+                self.repo.add_transaction(transaction)
             messagebox.showinfo("Success", "Bank statement uploaded successfully.")
             self.destroy()
         except Exception as e:
@@ -60,3 +64,13 @@ class UploadDialog(tk.Toplevel):
     def _on_cancel(self):
         self.file_var.set("")
         self.destroy()
+
+    def _parse_date(self, raw_date) -> date:
+        if isinstance(raw_date, date):
+            return raw_date
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+            try:
+                return datetime.strptime(raw_date, fmt).date()
+            except (ValueError, TypeError):
+                continue
+        raise ValueError(f"Unsupported date format: {raw_date}")

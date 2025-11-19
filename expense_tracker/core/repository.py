@@ -1,5 +1,9 @@
 import logging
 import sqlite3
+from dataclasses import replace
+from datetime import date
+
+from expense_tracker.core.model import Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +28,45 @@ class TransactionRepository:
         );
         """)
 
-    def add_transaction(self, date: str, amount: float, category: str, description: str) -> int:
-        self.conn.execute("""
-        INSERT INTO transactions (date, amount, category, description)
-        VALUES (?, ?, ?, ?)
-        """, (date, amount, category, description))
+    def _row_to_transaction(self, row: sqlite3.Row | None) -> Transaction | None:
+        if row is None:
+            return None
+        return Transaction(
+            id=row["id"],
+            date=date.fromisoformat(row["date"]),
+            amount=row["amount"],
+            category=row["category"],
+            description=row["description"] or "",
+        )
+
+    def add_transaction(self, transaction: Transaction) -> Transaction:
+        cursor = self.conn.execute(
+            """
+            INSERT INTO transactions (date, amount, category, description)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                transaction.date.isoformat(),
+                transaction.amount,
+                transaction.category,
+                transaction.description,
+            ),
+        )
         self.conn.commit()
-        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        return replace(transaction, id=cursor.lastrowid)
 
-    def get_transaction(self, transaction_id: int) -> sqlite3.Row:
+    def get_transaction(self, transaction_id: int) -> Transaction | None:
         row = self.conn.execute("SELECT * FROM transactions WHERE id = ?", (transaction_id,))
-        return row.fetchone()
+        return self._row_to_transaction(row.fetchone())
 
-    def get_all_transactions(self, limit: int = 100) -> list[sqlite3.Row]:
+    def get_all_transactions(self, limit: int = 100) -> list[Transaction]:
         rows = self.conn.execute("SELECT * FROM transactions ORDER BY date DESC LIMIT ?", (limit,))
-        return rows.fetchall()
+        transactions: list[Transaction] = []
+        for row in rows.fetchall():
+            transaction = self._row_to_transaction(row)
+            if transaction:
+                transactions.append(transaction)
+        return transactions
 
     def daily_summary(self, date: str):
         rows = self.conn.execute("""
@@ -68,7 +96,12 @@ class TransactionRepository:
         Updates a transaction in the database.
         """
         updates = ", ".join(f"{key} = ?" for key in data.keys())
-        values = list(data.values())
+        values: list[object] = []
+        for key, value in data.items():
+            if key == "date" and isinstance(value, date):
+                values.append(value.isoformat())
+            else:
+                values.append(value)
         values.append(transaction_id)
         query = f"UPDATE transactions SET {updates} WHERE id = ?"
         self.conn.execute(query, values)
