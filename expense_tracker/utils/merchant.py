@@ -7,12 +7,25 @@ def normalize_merchant(description: str) -> str:
     # Remove digits
     description = re.sub(r'\d+', '', description)
 
-    # Remove extra spaces
-    description = re.sub(r'\s+', ' ', description).strip()
+    # Remove just # and *
+    description = re.sub(r'[#*]', '', description)
+
+    # Remove PENDI or PENDING
+    description = re.sub(r'\bPENDING\b', '', description).strip()
+    description = re.sub(r'\bPENDI\b', '', description).strip()
+
+    # Remove MOBILE
+    description = re.sub(r'\bMOBILE\b', '', description).strip()
+
+    # Remove PURCHASE
+    description = re.sub(r'\bPURCHASE\b', '', description).strip()
 
     # Remove common trailing for cities
     description = re.sub(r"\b[A-Z]{2}\b$", "", description).strip()
-    
+
+    # Remove extra spaces
+    description = re.sub(r'\s+', ' ', description).strip()
+
     return description
 
 def categorize_merchant(description: str, amount: float, merchant_repo: MerchantCategoryRepository) -> str:
@@ -45,7 +58,7 @@ def fuzzy_lookup_merchant(merchat: str, threshold: int =90, merchant_repo: Merch
     if not merchants:
         return None
     
-    best_match, score, _ = process.extractOne(merchat, merchants, score_cutoff=threshold)
-    if score >= threshold:
-        return best_match
+    match = process.extractOne(merchat, merchants, score_cutoff=threshold)
+    if match:
+        return match[0]
     return None
