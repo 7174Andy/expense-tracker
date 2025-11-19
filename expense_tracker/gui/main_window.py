@@ -86,7 +86,7 @@ class MainWindow(tk.Frame):
             messagebox.showwarning("Multiple Selection", "Please select only one transaction to edit.")
             return
         
-        self._open_dialog(EditExpenseDialog, self.transaction_repo, transaction_ids[0])
+        self._open_dialog(EditExpenseDialog, self.transaction_repo, self.merchant_repo, transaction_ids[0])
     
     def _delete_transaction(self):
         transaction_ids = self._get_selected_ids()

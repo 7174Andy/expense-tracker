@@ -137,3 +137,7 @@ class MerchantCategoryRepository:
         row = self.conn.execute("SELECT category FROM merchant_categories WHERE merchant_key = ?", (merchant_key,))
         result = row.fetchone()
         return result["category"] if result else None
+
+    def get_all_merchants(self) -> list[str]:
+        rows = self.conn.execute("SELECT merchant_key FROM merchant_categories")
+        return [row["merchant_key"] for row in rows.fetchall()]

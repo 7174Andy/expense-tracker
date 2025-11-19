@@ -1,11 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from expense_tracker.core.repository import TransactionRepository
+from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
+from expense_tracker.utils.merchant import normalize_merchant
 
 class EditExpenseDialog(tk.Toplevel):
-    def __init__(self, master, repo: TransactionRepository, transaction_id: int):
+    def __init__(self, master, repo: TransactionRepository, merchant_repo: MerchantCategoryRepository, transaction_id: int):
         super().__init__(master)
         self.repo = repo
+        self.merchant_repo = merchant_repo
         self.transaction_id = transaction_id
         self.title("Edit Expense")
         self.resizable(False, False)
@@ -13,6 +15,7 @@ class EditExpenseDialog(tk.Toplevel):
         self.amount_var = tk.StringVar()
         self.category_var = tk.StringVar()
         self.description_var = tk.StringVar()
+        self.prev_data = None
 
         self._build_form()
         self._load_transaction_data()
@@ -46,11 +49,11 @@ class EditExpenseDialog(tk.Toplevel):
         self.bind("<Escape>", lambda e: self._on_cancel())
 
     def _load_transaction_data(self):
-        transaction = self.repo.get_transaction(self.transaction_id)
-        if transaction:
-            self.amount_var.set(str(transaction.amount))
-            self.category_var.set(transaction.category)
-            self.description_var.set(transaction.description)
+        self.prev_data = self.repo.get_transaction(self.transaction_id)
+        if self.prev_data is not None:
+            self.amount_var.set(str(self.prev_data.amount))
+            self.category_var.set(self.prev_data.category)
+            self.description_var.set(self.prev_data.description)
 
     def _on_save(self):
         raw = self.amount_var.get()
@@ -71,6 +74,12 @@ class EditExpenseDialog(tk.Toplevel):
                 "description": self.description_var.get() or ""
             }
             self.repo.update_transaction(self.transaction_id, data)
+            if self.prev_data.category != data["category"]:
+                messagebox.showinfo("Category Updated", f"Category changed from '{self.prev_data.category}' to '{data['category']}'")
+                normalized_merchant = normalize_merchant(self.prev_data.description)
+                self.merchant_repo.set_category(normalized_merchant, data["category"])
+                print(f"Normalized merchant: {normalized_merchant}")
+                print(f"Updated category in merchant repo: {self.merchant_repo.get_category(normalized_merchant)}")
             self.result = self.transaction_id
             self.destroy()
             messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")

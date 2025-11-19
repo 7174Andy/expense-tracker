@@ -11,6 +11,7 @@ license = { file = "LICENSE" }
 dynamic = ["version"]
 dependencies = [
     "pdfplumber>=0.11.7",
+    "rapidfuzz>=3.14.3",
     "ttkbootstrap>=1.18.1",
 ]
 
