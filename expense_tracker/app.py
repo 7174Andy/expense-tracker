@@ -1,11 +1,12 @@
-from expense_tracker.core.repository import TransactionRepository
+from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
 from tkinter import Tk, ttk
 from gui.main_window import MainWindow
 from expense_tracker.version import versions
 
 def main():
     # Get the absolute path to the database file
-    repo = TransactionRepository("expense_tracker/data/transactions.db")
+    transaction_repo = TransactionRepository("expense_tracker/data/transactions.db")
+    merchant_repo = MerchantCategoryRepository("expense_tracker/data/merchant_categories.db")
     root = Tk()
     root.title("Expense Tracker")
     root.geometry("1100x600")
@@ -14,7 +15,7 @@ def main():
         tb.Style("darkly")
     except Exception:
         ttk.Style()
-    MainWindow(root, repo)
+    MainWindow(root, transaction_repo, merchant_repo)
     root.mainloop()
 
 

@@ -8,9 +8,10 @@ from expense_tracker.gui.dialogs.upload import UploadDialog
 
 
 class MainWindow(tk.Frame):
-    def __init__(self, master, repo):
+    def __init__(self, master, transaction_repo, merchant_repo):
         super().__init__(master)
-        self.repo: TransactionRepository = repo
+        self.transaction_repo: TransactionRepository = transaction_repo
+        self.merchant_repo = merchant_repo
         self.master = master
         self._active_dialog: tk.Toplevel | None = None
         self.pack(fill=tk.BOTH, expand=True)
@@ -35,7 +36,7 @@ class MainWindow(tk.Frame):
     def refresh(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
-        for transaction in self.repo.get_all_transactions():
+        for transaction in self.transaction_repo.get_all_transactions():
             self.tree.insert(
                 "",
                 tk.END,
@@ -70,10 +71,10 @@ class MainWindow(tk.Frame):
         return ids
 
     def _upload_statement(self):
-        self._open_dialog(UploadDialog, self.repo)
+        self._open_dialog(UploadDialog, self.transaction_repo)
 
     def _add_transaction(self):
-        self._open_dialog(AddExpenseDialog, self.repo)
+        self._open_dialog(AddExpenseDialog, self.transaction_repo)
 
     def _edit_transaction(self):
         transaction_ids = self._get_selected_ids()
@@ -85,7 +86,7 @@ class MainWindow(tk.Frame):
             messagebox.showwarning("Multiple Selection", "Please select only one transaction to edit.")
             return
         
-        self._open_dialog(EditExpenseDialog, self.repo, transaction_ids[0])
+        self._open_dialog(EditExpenseDialog, self.transaction_repo, transaction_ids[0])
     
     def _delete_transaction(self):
         transaction_ids = self._get_selected_ids()
@@ -100,7 +101,7 @@ class MainWindow(tk.Frame):
         )
 
         if confirm:
-            deleted = self.repo.delete_multiple_transactions(transaction_ids)
+            deleted = self.transaction_repo.delete_multiple_transactions(transaction_ids)
             messagebox.showinfo("Success", f"Deleted {deleted} transaction(s) successfully.")
             self.refresh()
 
