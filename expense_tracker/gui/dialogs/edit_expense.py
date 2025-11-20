@@ -1,7 +1,10 @@
+import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
 from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
 from expense_tracker.utils.merchant import normalize_merchant
+
+logger = logging.getLogger(__name__)
 
 class EditExpenseDialog(tk.Toplevel):
     def __init__(self, master, repo: TransactionRepository, merchant_repo: MerchantCategoryRepository, transaction_id: int):
@@ -54,6 +57,8 @@ class EditExpenseDialog(tk.Toplevel):
             self.amount_var.set(str(self.prev_data.amount))
             self.category_var.set(self.prev_data.category)
             self.description_var.set(self.prev_data.description)
+            if self.merchant_repo.get_category(normalize_merchant(self.prev_data.description)):
+                self.category_var.set(self.merchant_repo.get_category(normalize_merchant(self.prev_data.description)))
 
     def _on_save(self):
         raw = self.amount_var.get()
@@ -75,11 +80,10 @@ class EditExpenseDialog(tk.Toplevel):
             }
             self.repo.update_transaction(self.transaction_id, data)
             if self.prev_data.category != data["category"]:
-                messagebox.showinfo("Category Updated", f"Category changed from '{self.prev_data.category}' to '{data['category']}'")
                 normalized_merchant = normalize_merchant(self.prev_data.description)
                 self.merchant_repo.set_category(normalized_merchant, data["category"])
-                print(f"Normalized merchant: {normalized_merchant}")
-                print(f"Updated category in merchant repo: {self.merchant_repo.get_category(normalized_merchant)}")
+                logger.debug(f"Normalized merchant: {normalized_merchant}")
+                logger.debug(f"Updated category in merchant repo: {self.merchant_repo.get_category(normalized_merchant)}")
             self.result = self.transaction_id
             self.destroy()
             messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")
