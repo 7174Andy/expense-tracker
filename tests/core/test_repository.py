@@ -179,3 +179,18 @@ def test_update_transaction(in_memory_repo):
     assert updated_transaction.amount == 120.0
     assert updated_transaction.category == "Shopping"
     assert updated_transaction.description == "Groceries" # Should remain unchanged
+
+
+def test_count_all_transactions(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    assert repo.count_all_transactions() == 0
+    
+    repo.add_transaction(Transaction(id=None, date=date.fromisoformat("2023-01-01"), amount=10.0, category="Food", description="Lunch"))
+    repo.add_transaction(Transaction(id=None, date=date.fromisoformat("2023-01-02"), amount=20.0, category="Utilities", description="Electricity"))
+    assert repo.count_all_transactions() == 2
+    
+    saved = repo.add_transaction(Transaction(id=None, date=date.fromisoformat("2023-01-03"), amount=30.0, category="Fun", description="Movies"))
+    assert repo.count_all_transactions() == 3
+
+    repo.delete_transaction(saved.id)
+    assert repo.count_all_transactions() == 2
