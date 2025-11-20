@@ -3,13 +3,15 @@ from tkinter import ttk, messagebox
 from datetime import datetime, date
 
 from expense_tracker.core.model import Transaction
-from expense_tracker.core.repository import TransactionRepository
+from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
 from expense_tracker.utils.extract import parse_bofa_statement_pdf
+from expense_tracker.utils.merchant import categorize_merchant
 
 class UploadDialog(tk.Toplevel):
-    def __init__(self, master, repo: TransactionRepository):
+    def __init__(self, master, repo: TransactionRepository, merchant_repo: MerchantCategoryRepository):
         super().__init__(master)
         self.repo = repo
+        self.merchant_repo = merchant_repo
         self.title("Upload Bank Statement")
         self.resizable(False, False)
 
@@ -55,6 +57,8 @@ class UploadDialog(tk.Toplevel):
                     category="Uncategorized",
                     description=t["description"],
                 )
+                category = categorize_merchant(transaction.description, transaction.amount, self.merchant_repo)
+                transaction.category = category
                 self.repo.add_transaction(transaction)
             messagebox.showinfo("Success", "Bank statement uploaded successfully.")
             self.destroy()
