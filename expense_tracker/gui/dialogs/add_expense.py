@@ -2,8 +2,8 @@ from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from expense_tracker.core.model import Transaction
-from expense_tracker.core.repository import TransactionRepository
+from expense_tracker.core.models import Transaction
+from expense_tracker.core.repositories import TransactionRepository
 
 class AddExpenseDialog(tk.Toplevel):
     def __init__(self, master, repo: TransactionRepository):

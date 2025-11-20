@@ -1,5 +1,5 @@
 from datetime import date
-from expense_tracker.core.model import Transaction, MerchantCategory
+from expense_tracker.core.models import Transaction, MerchantCategory
 
 
 def test_transaction_creation():

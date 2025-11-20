@@ -1,9 +1,11 @@
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
-from expense_tracker.core.model import MerchantCategory
-from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
-from expense_tracker.utils.merchant import normalize_merchant
+import threading
+from expense_tracker.core.models import MerchantCategory
+from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
+from expense_tracker.services.marchant import MerchantCategoryService
+from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +15,20 @@ class EditExpenseDialog(tk.Toplevel):
         self.repo = repo
         self.merchant_repo = merchant_repo
         self.transaction_id = transaction_id
+        self.merchant_service = MerchantCategoryService(merchant_repo, repo, normalize_merchant)
         self.title("Edit Expense")
         self.resizable(False, False)
 
         self.amount_var = tk.StringVar()
         self.category_var = tk.StringVar()
         self.description_var = tk.StringVar()
+        
+        self.progress_frame = ttk.Frame(self)
+        self.progress_frame.pack(fill="x", padx=10, pady=5)
+        self.progress_label = ttk.Label(self.progress_frame, text="")
+        self.progress_label.pack(side="left", padx=5)
+        self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
+
         self.prev_data = None
 
         self._build_form()
@@ -51,6 +61,18 @@ class EditExpenseDialog(tk.Toplevel):
 
         # Keyboard bindings
         self.bind("<Escape>", lambda e: self._on_cancel())
+
+    def show_progress(self, message):
+        """Show progress bar and message"""
+        self.progress_label.config(text=message)
+        self.progress_bar.pack(side="left", fill="x", expand=True, padx=5)
+        self.progress_bar.start(10)
+
+    def hide_progress(self):
+        """Hide progress bar"""
+        self.progress_bar.stop()
+        self.progress_bar.pack_forget()
+        self.progress_label.config(text="")
 
     def _load_transaction_data(self):
         self.prev_data = self.repo.get_transaction(self.transaction_id)
@@ -85,10 +107,9 @@ class EditExpenseDialog(tk.Toplevel):
             }
             self.repo.update_transaction(self.transaction_id, data)
             if self.prev_data is not None and self.prev_data.category != data["category"]:
-                normalized_merchant = normalize_merchant(self.prev_data.description)
-                self.merchant_repo.set_category(MerchantCategory(normalized_merchant, data["category"]))
-                logger.debug(f"Normalized merchant: {normalized_merchant}")
-                logger.debug(f"Updated category in merchant repo: {self.merchant_repo.get_category(normalized_merchant)}")
+                self.merchant_service.update_category(self.prev_data.description, data["category"])
+
+                self.merchant_service.update_uncategorized_transactions()
             self.result = self.transaction_id
             self.destroy()
             messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")

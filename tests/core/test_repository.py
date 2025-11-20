@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from expense_tracker.core.model import MerchantCategory, Transaction
-from expense_tracker.core.repository import (
+from expense_tracker.core.models import MerchantCategory, Transaction
+from expense_tracker.core.repositories import (
     MerchantCategoryRepository,
     TransactionRepository,
 )

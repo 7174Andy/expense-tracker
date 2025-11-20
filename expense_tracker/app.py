@@ -1,4 +1,4 @@
-from expense_tracker.core.repository import TransactionRepository, MerchantCategoryRepository
+from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
 from tkinter import Tk, ttk
 from expense_tracker.gui.main_window import MainWindow
 from expense_tracker.version import versions
