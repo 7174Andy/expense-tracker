@@ -87,16 +87,16 @@ def test_categorize_merchant_fuzzy_match(mock_repo: MagicMock):
 def test_categorize_merchant_no_match(mock_repo: MagicMock):
     """Test categorization when no match is found."""
     mock_repo.get_category.return_value = None
-    assert categorize_merchant("Unknown Place", -20.0, mock_repo) == "Other"
+    assert categorize_merchant("Unknown Place", -20.0, mock_repo) == "Uncategorized"
     mock_repo.get_category.assert_called_once_with("UNKNOWN PLACE")
     mock_repo.get_all_merchants.assert_called_once()
 
 
 def test_categorize_merchant_fuzzy_lookup_returns_none(mock_repo: MagicMock):
-    """Test that it returns 'Other' if fuzzy lookup finds nothing."""
+    """Test that it returns 'Uncategorized' if fuzzy lookup finds nothing."""
     mock_repo.get_category.return_value = None
     mock_repo.get_all_merchants.return_value = [MerchantCategory("A", "B"), MerchantCategory("B", "C")] # No close matches
-    assert categorize_merchant("XYZ Corp", -10.0, mock_repo) == "Other"
+    assert categorize_merchant("XYZ Corp", -10.0, mock_repo) == "Uncategorized"
 
 
 def test_categorize_merchant_zero_amount(mock_repo: MagicMock):
