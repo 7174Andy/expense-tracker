@@ -5,7 +5,7 @@ from datetime import datetime, date
 from expense_tracker.core.models import Transaction
 from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
 from expense_tracker.utils.extract import parse_bofa_statement_pdf
-from expense_tracker.services.marchant import MerchantCategoryService
+from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 class UploadDialog(tk.Toplevel):

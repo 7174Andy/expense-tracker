@@ -14,7 +14,8 @@ class MerchantCategoryService:
         self.transaction_repo = transaction_repo
         self.normalizer = normalizer
 
-    def update_category(self, description: str, category: str) -> str:
+    def update_category(self, description: str, category: str) -> None:
+        """Updates the category for a given merchant description."""
         normalized_merchant = self.normalizer(description)
         merchant_category = MerchantCategory(normalized_merchant, category)
         self.merchant_repo.set_category(merchant_category)
@@ -25,7 +26,6 @@ class MerchantCategoryService:
         Args:
             merchant (str): The normalized merchant name to look up.
             threshold (int, optional): The minimum score for a match to be considered valid. Defaults to 90.
-            merchant_repo (MerchantCategoryRepository, optional): The repository to look up merchant names. Defaults to None.
 
         Returns:
             str | None: The best matching merchant name if found, otherwise None.

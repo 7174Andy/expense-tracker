@@ -2,7 +2,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
 from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
-from expense_tracker.services.marchant import MerchantCategoryService
+from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class EditExpenseDialog(tk.Toplevel):
         self.amount_var = tk.StringVar()
         self.category_var = tk.StringVar()
         self.description_var = tk.StringVar()
-        
+
         self.progress_frame = ttk.Frame(self)
         self.progress_frame.pack(fill="x", padx=10, pady=5)
         self.progress_label = ttk.Label(self.progress_frame, text="")
@@ -60,18 +60,6 @@ class EditExpenseDialog(tk.Toplevel):
         # Keyboard bindings
         self.bind("<Escape>", lambda e: self._on_cancel())
 
-    def show_progress(self, message):
-        """Show progress bar and message"""
-        self.progress_label.config(text=message)
-        self.progress_bar.pack(side="left", fill="x", expand=True, padx=5)
-        self.progress_bar.start(10)
-
-    def hide_progress(self):
-        """Hide progress bar"""
-        self.progress_bar.stop()
-        self.progress_bar.pack_forget()
-        self.progress_label.config(text="")
-
     def _load_transaction_data(self):
         self.prev_data = self.repo.get_transaction(self.transaction_id)
         if self.prev_data is not None:
@@ -104,17 +92,26 @@ class EditExpenseDialog(tk.Toplevel):
                 "description": self.description_var.get() or ""
             }
             self.repo.update_transaction(self.transaction_id, data)
-            if self.prev_data is not None and self.prev_data.category != data["category"]:
-                self.merchant_service.update_category(self.prev_data.description, data["category"])
 
-                self.merchant_service.update_uncategorized_transactions()
-            self.result = self.transaction_id
-            self.destroy()
-            messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")
+            # Check if we need to update merchant categories
+            if self.prev_data is not None and self.prev_data.category != data["category"]:
+                try:
+                    self.merchant_service.update_category(self.prev_data.description, data["category"])
+                    self.merchant_service.update_uncategorized_transactions()
+                    messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated and related transactions recategorized.")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to update related transactions: {e}")
+                self.destroy()
+            else:
+                # No category change, just close the dialog
+                self.result = self.transaction_id
+                messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")
+                self.destroy()
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update transaction: {e}")
             return
-    
+
     def _on_cancel(self):
         self.result = None
         self.destroy()
