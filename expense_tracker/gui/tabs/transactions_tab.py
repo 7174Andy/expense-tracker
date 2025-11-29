@@ -35,6 +35,13 @@ class TransactionsTab(tk.Frame):
         self.tree.heading("amount", text="Amount")
         self.tree.heading("category", text="Category")
         self.tree.heading("description", text="Description")
+
+        # Set column widths
+        self.tree.column("date", width=100, anchor=tk.W, stretch=tk.NO)
+        self.tree.column("amount", width=100, anchor=tk.W, stretch=tk.NO)
+        self.tree.column("category", width=150, anchor=tk.W, stretch=tk.NO)
+        self.tree.column("description", width=300, anchor=tk.W)
+
         self.tree.column("id", width=0, stretch=tk.NO)
         self.tree.pack(fill=tk.BOTH, expand=True)
 
