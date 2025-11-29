@@ -5,6 +5,7 @@ from expense_tracker.utils.merchant_normalizer import (
     normalize_merchant,
 )
 
+
 # Tests for normalize_merchant
 @pytest.mark.parametrize(
     "input_str, expected_str",

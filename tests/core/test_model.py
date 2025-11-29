@@ -17,6 +17,7 @@ def test_transaction_creation():
     assert t.category == "Food"
     assert t.description == "Lunch"
 
+
 def test_merchant_category_creation():
     """Test that a MerchantCategory object can be created with correct values."""
     mc = MerchantCategory(

@@ -5,6 +5,7 @@ from tkinter import ttk, messagebox
 from expense_tracker.core.models import Transaction
 from expense_tracker.core.repositories import TransactionRepository
 
+
 class AddExpenseDialog(tk.Toplevel):
     def __init__(self, master, repo: TransactionRepository):
         super().__init__(master)
@@ -17,7 +18,7 @@ class AddExpenseDialog(tk.Toplevel):
         self.description_var = tk.StringVar()
 
         self._build_form()
-    
+
     def _build_form(self):
         frame = ttk.Frame(self)
         frame.pack(fill="both", padx=10, pady=10)
@@ -40,8 +41,12 @@ class AddExpenseDialog(tk.Toplevel):
         # Buttons
         button_frame = ttk.Frame(frame)
         button_frame.grid(row=6, column=0, pady=10, sticky="e")
-        ttk.Button(button_frame, text="Add", command=self._on_add).pack(side="right", padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(side="right")
+        ttk.Button(button_frame, text="Add", command=self._on_add).pack(
+            side="right", padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(
+            side="right"
+        )
 
         # Keyboard bindings
         self.bind("<Escape>", lambda e: self._on_cancel())
@@ -51,7 +56,7 @@ class AddExpenseDialog(tk.Toplevel):
         if not raw:
             messagebox.showerror("Error", "Amount is required.")
             return
-        
+
         try:
             amount = float(raw)
         except ValueError:
@@ -69,11 +74,13 @@ class AddExpenseDialog(tk.Toplevel):
             saved_transaction = self.repo.add_transaction(transaction)
             self.result = saved_transaction.id
             self.destroy()
-            messagebox.showinfo("Success", f"Transaction added with ID: {saved_transaction.id}")
+            messagebox.showinfo(
+                "Success", f"Transaction added with ID: {saved_transaction.id}"
+            )
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add transaction: {e}")
             return
-    
+
     def _on_cancel(self):
         self.result = None
         self.destroy()

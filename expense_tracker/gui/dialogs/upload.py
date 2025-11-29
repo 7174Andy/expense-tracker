@@ -3,19 +3,30 @@ from tkinter import ttk, messagebox
 from datetime import datetime, date
 
 from expense_tracker.core.models import Transaction
-from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
+from expense_tracker.core.repositories import (
+    TransactionRepository,
+    MerchantCategoryRepository,
+)
 from expense_tracker.utils.extract import parse_bofa_statement_pdf
 from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
+
 class UploadDialog(tk.Toplevel):
-    def __init__(self, master, repo: TransactionRepository, merchant_repo: MerchantCategoryRepository):
+    def __init__(
+        self,
+        master,
+        repo: TransactionRepository,
+        merchant_repo: MerchantCategoryRepository,
+    ):
         super().__init__(master)
         self.repo = repo
         self.merchant_repo = merchant_repo
         self.title("Upload Bank Statement")
         self.resizable(False, False)
-        self.merchant_service = MerchantCategoryService(merchant_repo, repo, normalize_merchant)
+        self.merchant_service = MerchantCategoryService(
+            merchant_repo, repo, normalize_merchant
+        )
 
         self.file_var = tk.StringVar()
 
@@ -29,16 +40,23 @@ class UploadDialog(tk.Toplevel):
         ttk.Label(frame, text="Select PDF File:").grid(row=0, column=0, sticky="w")
         file_entry = ttk.Entry(frame, textvariable=self.file_var, width=40)
         file_entry.grid(row=1, column=0, sticky="w")
-        ttk.Button(frame, text="Browse", command=self._browse_file).grid(row=1, column=1, padx=5)
+        ttk.Button(frame, text="Browse", command=self._browse_file).grid(
+            row=1, column=1, padx=5
+        )
 
         # Buttons
         button_frame = ttk.Frame(frame)
         button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="e")
-        ttk.Button(button_frame, text="Upload", command=self._on_upload).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(side=tk.LEFT, padx=5)
-    
+        ttk.Button(button_frame, text="Upload", command=self._on_upload).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(
+            side=tk.LEFT, padx=5
+        )
+
     def _browse_file(self):
         from tkinter import filedialog
+
         file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
         if file_path:
             self.file_var.set(file_path)
@@ -59,7 +77,9 @@ class UploadDialog(tk.Toplevel):
                     category="Uncategorized",
                     description=t["description"],
                 )
-                transaction.category = self.merchant_service.categorize_merchant(transaction.description, transaction.amount)
+                transaction.category = self.merchant_service.categorize_merchant(
+                    transaction.description, transaction.amount
+                )
                 self.repo.add_transaction(transaction)
             messagebox.showinfo("Success", "Bank statement uploaded successfully.")
             self.destroy()

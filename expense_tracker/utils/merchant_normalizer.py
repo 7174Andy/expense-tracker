@@ -1,5 +1,6 @@
 import re
 
+
 def normalize_merchant(description: str) -> str:
     """Normalizing the description so that it can be matched against the merchant repository. This includes:
     - Converting to uppercase
@@ -15,27 +16,27 @@ def normalize_merchant(description: str) -> str:
         str: The normalized description.
     """
     description = description.upper()
-    
+
     # Remove digits
-    description = re.sub(r'\d+', '', description)
+    description = re.sub(r"\d+", "", description)
 
     # Remove just # and *
-    description = re.sub(r'[#*]', '', description)
+    description = re.sub(r"[#*]", "", description)
 
     # Remove PENDI or PENDING
-    description = re.sub(r'\bPENDING\b', '', description).strip()
-    description = re.sub(r'\bPENDI\b', '', description).strip()
+    description = re.sub(r"\bPENDING\b", "", description).strip()
+    description = re.sub(r"\bPENDI\b", "", description).strip()
 
     # Remove MOBILE
-    description = re.sub(r'\bMOBILE\b', '', description).strip()
+    description = re.sub(r"\bMOBILE\b", "", description).strip()
 
     # Remove PURCHASE
-    description = re.sub(r'\bPURCHASE\b', '', description).strip()
+    description = re.sub(r"\bPURCHASE\b", "", description).strip()
 
     # Remove common trailing for cities
     description = re.sub(r"\b[A-Z]{2}\b$", "", description).strip()
 
     # Remove extra spaces
-    description = re.sub(r'\s+', ' ', description).strip()
+    description = re.sub(r"\s+", " ", description).strip()
 
     return description

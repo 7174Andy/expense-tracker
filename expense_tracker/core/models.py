@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 
+
 @dataclass
 class Transaction:
     id: int | None
@@ -8,6 +9,7 @@ class Transaction:
     amount: float
     category: str
     description: str
+
 
 @dataclass
 class MerchantCategory:

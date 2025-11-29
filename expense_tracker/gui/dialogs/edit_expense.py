@@ -1,19 +1,31 @@
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
-from expense_tracker.core.repositories import TransactionRepository, MerchantCategoryRepository
+from expense_tracker.core.repositories import (
+    TransactionRepository,
+    MerchantCategoryRepository,
+)
 from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 logger = logging.getLogger(__name__)
 
+
 class EditExpenseDialog(tk.Toplevel):
-    def __init__(self, master, repo: TransactionRepository, merchant_repo: MerchantCategoryRepository, transaction_id: int):
+    def __init__(
+        self,
+        master,
+        repo: TransactionRepository,
+        merchant_repo: MerchantCategoryRepository,
+        transaction_id: int,
+    ):
         super().__init__(master)
         self.repo = repo
         self.merchant_repo = merchant_repo
         self.transaction_id = transaction_id
-        self.merchant_service = MerchantCategoryService(merchant_repo, repo, normalize_merchant)
+        self.merchant_service = MerchantCategoryService(
+            merchant_repo, repo, normalize_merchant
+        )
         self.title("Edit Expense")
         self.resizable(False, False)
 
@@ -25,7 +37,7 @@ class EditExpenseDialog(tk.Toplevel):
         self.progress_frame.pack(fill="x", padx=10, pady=5)
         self.progress_label = ttk.Label(self.progress_frame, text="")
         self.progress_label.pack(side="left", padx=5)
-        self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
+        self.progress_bar = ttk.Progressbar(self.progress_frame, mode="indeterminate")
 
         self.prev_data = None
 
@@ -54,8 +66,12 @@ class EditExpenseDialog(tk.Toplevel):
         # Buttons
         button_frame = ttk.Frame(frame)
         button_frame.grid(row=6, column=0, pady=10, sticky="e")
-        ttk.Button(button_frame, text="Save", command=self._on_save).pack(side="right", padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(side="right")
+        ttk.Button(button_frame, text="Save", command=self._on_save).pack(
+            side="right", padx=5
+        )
+        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(
+            side="right"
+        )
 
         # Keyboard bindings
         self.bind("<Escape>", lambda e: self._on_cancel())
@@ -69,7 +85,9 @@ class EditExpenseDialog(tk.Toplevel):
 
             # Only suggest category if the current category is "Uncategorized"
             if self.prev_data.category == "Uncategorized":
-                suggested_category = self.merchant_repo.get_category(normalize_merchant(self.prev_data.description))
+                suggested_category = self.merchant_repo.get_category(
+                    normalize_merchant(self.prev_data.description)
+                )
                 if suggested_category:
                     self.category_var.set(suggested_category.category)
 
@@ -78,7 +96,7 @@ class EditExpenseDialog(tk.Toplevel):
         if not raw:
             messagebox.showerror("Error", "Amount is required.")
             return
-        
+
         try:
             amount = float(raw)
         except ValueError:
@@ -89,23 +107,35 @@ class EditExpenseDialog(tk.Toplevel):
             data = {
                 "amount": amount,
                 "category": self.category_var.get() or "Uncategorized",
-                "description": self.description_var.get() or ""
+                "description": self.description_var.get() or "",
             }
             self.repo.update_transaction(self.transaction_id, data)
 
             # Check if we need to update merchant categories
-            if self.prev_data is not None and self.prev_data.category != data["category"]:
+            if (
+                self.prev_data is not None
+                and self.prev_data.category != data["category"]
+            ):
                 try:
-                    self.merchant_service.update_category(self.prev_data.description, data["category"])
+                    self.merchant_service.update_category(
+                        self.prev_data.description, data["category"]
+                    )
                     self.merchant_service.update_uncategorized_transactions()
-                    messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated and related transactions recategorized.")
+                    messagebox.showinfo(
+                        "Success",
+                        f"Transaction {self.transaction_id} updated and related transactions recategorized.",
+                    )
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to update related transactions: {e}")
+                    messagebox.showerror(
+                        "Error", f"Failed to update related transactions: {e}"
+                    )
                 self.destroy()
             else:
                 # No category change, just close the dialog
                 self.result = self.transaction_id
-                messagebox.showinfo("Success", f"Transaction {self.transaction_id} updated.")
+                messagebox.showinfo(
+                    "Success", f"Transaction {self.transaction_id} updated."
+                )
                 self.destroy()
 
         except Exception as e:

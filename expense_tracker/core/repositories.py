@@ -7,10 +7,12 @@ from expense_tracker.core.models import Transaction, MerchantCategory
 
 logger = logging.getLogger(__name__)
 
+
 class TransactionRepository:
     """
     A repository for managing transaction data.
     """
+
     def __init__(self, db_path: str):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
@@ -56,20 +58,30 @@ class TransactionRepository:
         return replace(transaction, id=cursor.lastrowid)
 
     def get_transaction(self, transaction_id: int) -> Transaction | None:
-        row = self.conn.execute("SELECT * FROM transactions WHERE id = ?", (transaction_id,))
+        row = self.conn.execute(
+            "SELECT * FROM transactions WHERE id = ?", (transaction_id,)
+        )
         return self._row_to_transaction(row.fetchone())
 
-    def get_all_transactions(self, limit: int = 100, offset: int = 0) -> list[Transaction]:
-        rows = self.conn.execute("SELECT * FROM transactions ORDER BY date DESC LIMIT ? OFFSET ?", (limit, offset))
+    def get_all_transactions(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[Transaction]:
+        rows = self.conn.execute(
+            "SELECT * FROM transactions ORDER BY date DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
         transactions: list[Transaction] = []
         for row in rows.fetchall():
             transaction = self._row_to_transaction(row)
             if transaction:
                 transactions.append(transaction)
         return transactions
-    
+
     def get_all_transactions_by_category(self, category: str) -> list[Transaction]:
-        rows = self.conn.execute("SELECT * FROM transactions WHERE category = ? ORDER BY date DESC", (category,))
+        rows = self.conn.execute(
+            "SELECT * FROM transactions WHERE category = ? ORDER BY date DESC",
+            (category,),
+        )
         transactions: list[Transaction] = []
         for row in rows.fetchall():
             transaction = self._row_to_transaction(row)
@@ -81,24 +93,62 @@ class TransactionRepository:
         row = self.conn.execute("SELECT COUNT(*) FROM transactions")
         return row.fetchone()[0]
 
+    def search_by_keyword(
+        self, keyword: str | None, limit: int = 100, offset: int = 0
+    ) -> list[Transaction]:
+        """
+        Search transactions by keyword in description field (case-insensitive).
+        Returns all transactions if keyword is None or empty.
+        """
+        if not keyword:
+            return self.get_all_transactions(limit, offset)
+
+        rows = self.conn.execute(
+            "SELECT * FROM transactions WHERE description LIKE ? COLLATE NOCASE ORDER BY date DESC LIMIT ? OFFSET ?",
+            (f"%{keyword}%", limit, offset),
+        )
+        transactions: list[Transaction] = []
+        for row in rows.fetchall():
+            transaction = self._row_to_transaction(row)
+            if transaction:
+                transactions.append(transaction)
+        return transactions
+
+    def count_search_results(self, keyword: str | None) -> int:
+        """
+        Count transactions matching the keyword.
+        Returns total count if keyword is None or empty.
+        """
+        if not keyword:
+            return self.count_all_transactions()
+
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM transactions WHERE description LIKE ? COLLATE NOCASE",
+            (f"%{keyword}%",),
+        )
+        return row.fetchone()[0]
+
     def daily_summary(self, date: str):
-        rows = self.conn.execute("""
+        rows = self.conn.execute(
+            """
         SELECT category, SUM(amount) as total
         FROM transactions
         WHERE date = ?
         GROUP BY category
-        """, (date,))
+        """,
+            (date,),
+        )
         return rows.fetchall()
 
     def delete_transaction(self, transaction_id: int) -> None:
         self.conn.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
         self.conn.commit()
-    
+
     def delete_multiple_transactions(self, transaction_ids: list[int]) -> int:
         if not transaction_ids:
             return 0
-        
-        placeholders = ', '.join('?' for _ in transaction_ids)
+
+        placeholders = ", ".join("?" for _ in transaction_ids)
         query = f"DELETE FROM transactions WHERE id IN ({placeholders})"
         cursor = self.conn.execute(query, transaction_ids)
         self.conn.commit()
@@ -120,10 +170,12 @@ class TransactionRepository:
         self.conn.execute(query, values)
         self.conn.commit()
 
+
 class MerchantCategoryRepository:
     """
     A repository for managing merchant categories.
     """
+
     def __init__(self, db_path: str):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
@@ -138,7 +190,9 @@ class MerchantCategoryRepository:
             );
         """)
 
-    def _row_to_merchant_category(self, row: sqlite3.Row | None) -> MerchantCategory | None:
+    def _row_to_merchant_category(
+        self, row: sqlite3.Row | None
+    ) -> MerchantCategory | None:
         if row is None:
             return None
         return MerchantCategory(
@@ -148,16 +202,21 @@ class MerchantCategoryRepository:
 
     def set_category(self, merchant_category: MerchantCategory) -> None:
         """Sets or updates the category for a given merchant key."""
-        self.conn.execute("""
+        self.conn.execute(
+            """
             INSERT INTO merchant_categories (merchant_key, category)
             VALUES (?, ?)
             ON CONFLICT(merchant_key) DO UPDATE SET category=excluded.category
-        """, (merchant_category.merchant_key, merchant_category.category))
+        """,
+            (merchant_category.merchant_key, merchant_category.category),
+        )
         self.conn.commit()
 
     def get_category(self, merchant_key: str) -> MerchantCategory | None:
         """Retrieves the category for a given merchant key."""
-        row = self.conn.execute("SELECT * FROM merchant_categories WHERE merchant_key = ?", (merchant_key,))
+        row = self.conn.execute(
+            "SELECT * FROM merchant_categories WHERE merchant_key = ?", (merchant_key,)
+        )
         return self._row_to_merchant_category(row.fetchone())
 
     def get_all_merchants(self) -> list[MerchantCategory]:
