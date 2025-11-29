@@ -18,7 +18,7 @@ def main():
     )
     root = Tk()
     root.title("Expense Tracker")
-    root.geometry("1100x600")
+    root.geometry("1200x700")
     try:
         import ttkbootstrap as tb
 

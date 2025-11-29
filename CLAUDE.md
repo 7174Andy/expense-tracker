@@ -100,7 +100,13 @@ The application follows a repository pattern with clear separation of concerns:
 
 ### GUI Architecture
 
-- `MainWindow` ([expense_tracker/gui/main_window.py](expense_tracker/gui/main_window.py)) - Main window with transaction table, toolbar, and pagination
+The application uses a tabbed interface to organize different views:
+
+- `MainWindow` ([expense_tracker/gui/main_window.py](expense_tracker/gui/main_window.py)) - Tab container using ttk.Notebook
+  - Manages modal dialogs via `_open_dialog()` method
+  - Currently contains one tab: "Transactions"
+- Tabs in `gui/tabs/`:
+  - `TransactionsTab` - Transaction table with toolbar, search, and pagination
 - Dialogs in `gui/dialogs/`:
   - `AddExpenseDialog` - Manual transaction entry
   - `EditExpenseDialog` - Edit existing transaction and optionally update merchant-category mapping
@@ -131,7 +137,10 @@ When editing a transaction in `EditExpenseDialog`, if the user updates the categ
 2. Calls `update_uncategorized_transactions()` to re-categorize all uncategorized transactions
 
 ### Pagination
-The main window uses offset-based pagination with a page size of 100 transactions. Transactions are ordered by date DESC.
+The Transactions tab uses offset-based pagination with a page size of 100 transactions. Transactions are ordered by date DESC.
 
 ### Dialog Management
-`MainWindow` uses `_active_dialog` to ensure only one dialog is open at a time. Dialogs are modal and refresh the main window on close.
+`MainWindow` uses `_active_dialog` to ensure only one dialog is open at a time. Dialogs are modal and refresh the active tab on close.
+
+### Tabbed Interface
+The main window uses `ttk.Notebook` to organize views into tabs. Each tab is a `tk.Frame` subclass that encapsulates its own functionality. The `TransactionsTab` contains all transaction management features (search, CRUD operations, pagination).
