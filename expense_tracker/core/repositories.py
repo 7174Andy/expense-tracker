@@ -170,6 +170,72 @@ class TransactionRepository:
         self.conn.execute(query, values)
         self.conn.commit()
 
+    def get_daily_spending_for_month(self, year: int, month: int) -> dict[int, float]:
+        """
+        Returns a dictionary mapping day-of-month (1-31) to total spending.
+        Only includes expenses (negative amounts).
+        """
+        # Create date range for the month
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1)
+        else:
+            end_date = date(year, month + 1, 1)
+
+        rows = self.conn.execute(
+            """
+            SELECT CAST(strftime('%d', date) AS INTEGER) as day,
+                   SUM(ABS(amount)) as total
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            GROUP BY day
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+
+        result: dict[int, float] = {}
+        for row in rows.fetchall():
+            result[row["day"]] = row["total"]
+        return result
+
+    def get_transactions_for_date(self, target_date: date) -> list[Transaction]:
+        """
+        Query transactions matching exact date.
+        Order by amount DESC (largest expenses first).
+        """
+        rows = self.conn.execute(
+            "SELECT * FROM transactions WHERE date = ? ORDER BY amount ASC",
+            (target_date.isoformat(),),
+        )
+        transactions: list[Transaction] = []
+        for row in rows.fetchall():
+            transaction = self._row_to_transaction(row)
+            if transaction:
+                transactions.append(transaction)
+        return transactions
+
+    def get_months_with_expenses(self) -> list[tuple[int, int]]:
+        """
+        Returns a list of (year, month) tuples for all months that have expenses.
+        Only includes months with negative amounts (expenses).
+        Ordered by year and month descending (most recent first).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month
+            FROM transactions
+            WHERE amount < 0
+            ORDER BY year DESC, month DESC
+            """
+        )
+        result: list[tuple[int, int]] = []
+        for row in rows.fetchall():
+            result.append((row["year"], row["month"]))
+        return result
+
 
 class MerchantCategoryRepository:
     """
