@@ -2,13 +2,13 @@
 
 ## Architecture Overview
 
-The spending heatmap feature introduces a tabbed interface to the main window, replacing the current single-view design:
+The spending heatmap feature adds a new tab to the existing tabbed interface:
 - **Repository Layer**: Add aggregation method to `TransactionRepository`
-- **GUI Layer Refactor**: Convert `MainWindow` to use `ttk.Notebook` for tabbed interface
-  - **Transactions Tab**: Current transaction table view (existing functionality)
+- **GUI Layer**: Add new `HeatmapTab` to the existing `ttk.Notebook`
   - **Heatmap Tab**: New calendar heatmap visualization
-  - **Extensible**: Framework for future tabs (metrics, charts, etc.)
-- **Integration**: Tab switching via notebook widget, no separate dialogs
+- **Integration**: Tab switching via existing notebook widget, no separate dialogs
+
+**Note**: The tabbed UI refactor (MainWindow with ttk.Notebook and TransactionsTab extraction) has already been completed and is in production.
 
 ## Component Design
 
@@ -35,49 +35,7 @@ def get_daily_spending_for_month(self, year: int, month: int) -> dict[int, float
 - No new indexes needed (date column already used in ORDER BY clauses)
 - Expected < 50ms for typical monthly data (< 200 transactions)
 
-### 2. Main Window Tabbed Interface Refactor
-**File**: `expense_tracker/gui/main_window.py`
-
-**Current Structure** (single view):
-```
-MainWindow(tk.Frame)
-  → Toolbar
-  → Transaction Table (Treeview)
-  → Footer (pagination)
-```
-
-**New Structure** (tabbed):
-```
-MainWindow(tk.Frame)
-  → ttk.Notebook (tab container)
-    → Tab 1: "Transactions" (TransactionTab)
-      → Toolbar
-      → Transaction Table (Treeview)
-      → Footer (pagination + search indicator)
-    → Tab 2: "Heatmap" (HeatmapTab)
-      → Month navigation header
-      → Calendar grid
-```
-
-### 3. Transactions Tab Component
-**File**: `expense_tracker/gui/tabs/transactions_tab.py` (new file)
-
-New `TransactionsTab` class:
-- Inherits from `tk.Frame`
-- Extracts existing transaction table logic from `MainWindow`
-- Encapsulates:
-  - Toolbar with buttons (Add, Edit, Delete, Refresh, Import, Search)
-  - Transaction Treeview table
-  - Pagination footer
-  - Search functionality
-- Constructor takes `master`, `transaction_repo`, `merchant_repo`
-- Public methods:
-  - `refresh()`: Reload transaction data
-  - `_add_transaction()`, `_edit_transaction()`, etc. (existing methods)
-
-**Migration Strategy**: Move existing code from `MainWindow` to `TransactionsTab` with minimal changes.
-
-### 4. Heatmap Tab Component
+### 2. Heatmap Tab Component
 **File**: `expense_tracker/gui/tabs/heatmap_tab.py` (new file)
 
 New `HeatmapTab` class:
@@ -122,54 +80,35 @@ New `HeatmapTab` class:
   - Week offsets for proper grid alignment
 - Empty cells for days outside the current month (grayed out)
 
-### 5. Refactored Main Window
+### 3. Main Window Integration
 **File**: `expense_tracker/gui/main_window.py`
 
-Updated `MainWindow` class becomes a tab container:
+Add the HeatmapTab to the existing MainWindow:
 
 ```python
-class MainWindow(tk.Frame):
-    def __init__(self, master, transaction_repo, merchant_repo):
-        super().__init__(master)
-        self.transaction_repo = transaction_repo
-        self.merchant_repo = merchant_repo
-        self.master = master
-        self._active_dialog = None  # Keep for other dialogs (add, edit, upload)
+# In __init__ method, after creating TransactionsTab:
+self.heatmap_tab = HeatmapTab(
+    self.notebook, transaction_repo
+)
+self.notebook.add(self.heatmap_tab, text="Heatmap")
 
-        # Create notebook (tab container)
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
+# Bind tab change event for lazy loading/refresh
+self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-        # Create tabs
-        self.transactions_tab = TransactionsTab(
-            self.notebook, transaction_repo, merchant_repo, self
-        )
-        self.heatmap_tab = HeatmapTab(
-            self.notebook, transaction_repo
-        )
-
-        # Add tabs to notebook
-        self.notebook.add(self.transactions_tab, text="Transactions")
-        self.notebook.add(self.heatmap_tab, text="Heatmap")
-
-        # Bind tab change event for lazy loading/refresh
-        self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
-
-    def _on_tab_changed(self, event):
-        """Refresh tab content when user switches tabs"""
-        current_tab = self.notebook.select()
-        tab_index = self.notebook.index(current_tab)
-        if tab_index == 1:  # Heatmap tab
-            self.heatmap_tab.refresh()
+def _on_tab_changed(self, event):
+    """Refresh tab content when user switches tabs"""
+    current_tab = self.notebook.select()
+    tab_index = self.notebook.index(current_tab)
+    if tab_index == 1:  # Heatmap tab
+        self.heatmap_tab.refresh()
 ```
 
-**Key Changes**:
-- Remove `_build_toolbar()`, `_build_body()`, `_build_footer()` (moved to TransactionsTab)
-- Keep `_active_dialog` management for Add/Edit/Upload dialogs (still modal)
-- Notebook widget manages tab switching
-- Each tab is self-contained with its own logic
+**Changes Required**:
+- Import `HeatmapTab` from `expense_tracker.gui.tabs`
+- Instantiate HeatmapTab and add to notebook
+- Add `_on_tab_changed` event handler for lazy loading
 
-### 6. Drill-Down Interaction
+### 4. Drill-Down Interaction
 When user clicks a cell in the heatmap:
 1. Capture the selected date (year, month, day)
 2. Switch to Transactions tab
@@ -192,9 +131,9 @@ When user clicks a cell in the heatmap:
 
 ```
 App Launch
-  → MainWindow creates Notebook with two tabs
-  → TransactionsTab loads (displays current page of transactions)
-  → HeatmapTab created but not populated (lazy load)
+  → MainWindow creates Notebook (already has Transactions tab)
+  → HeatmapTab created and added to notebook
+  → HeatmapTab not populated until first viewed (lazy load)
 
 User switches to "Heatmap" tab
   → Notebook <<NotebookTabChanged>> event fires
@@ -240,15 +179,15 @@ def calculate_color(spending: float, percentiles: dict) -> str:
 
 ## Alternative Designs Considered
 
-### Alt 1: Separate Modal Dialog (Original Design)
-**Pros**: Simple to implement, no need to refactor MainWindow
+### Alt 1: Separate Modal Dialog
+**Pros**: Simple to implement, no changes to existing MainWindow structure
 **Cons**: Disrupts workflow, requires opening/closing dialog, harder to navigate between views
-**Decision**: Rejected - tabbed interface is more modern and user-friendly
+**Decision**: Rejected - leveraging existing tab infrastructure is more user-friendly and consistent
 
-### Alt 2: Embedded Heatmap in Main Window (Side-by-Side)
-**Pros**: No need for tabs, always visible alongside transactions
-**Cons**: Clutters main window, reduces transaction table space, harder to implement responsive layout
-**Decision**: Rejected - tabs provide better space management
+### Alt 2: Embedded Heatmap in Transactions Tab (Side-by-Side)
+**Pros**: Always visible alongside transactions
+**Cons**: Clutters transaction view, reduces table space, harder to implement responsive layout
+**Decision**: Rejected - separate tab provides better space management
 
 ### Alt 3: Canvas-Based Rendering
 **Pros**: More flexible drawing, custom shapes, gradients
@@ -278,12 +217,12 @@ def calculate_color(spending: float, percentiles: dict) -> str:
 
 - **Query Time**: < 50ms for typical month (< 200 transactions)
 - **Render Time**: < 150ms for full calendar grid (31 cells)
-- **Total Load Time**: < 200ms from button click to visible heatmap
-- **Memory**: Negligible impact (< 1MB for dialog and data)
+- **Total Load Time**: < 200ms from tab switch to visible heatmap
+- **Memory**: Negligible impact (< 1MB for tab and data)
 
 ## Testing Strategy
 
 1. **Unit Tests**: Repository aggregation method with various date ranges
-2. **Integration Tests**: Heatmap dialog creation and month navigation
+2. **Integration Tests**: HeatmapTab creation, month navigation, and drill-down
 3. **Manual Tests**: Visual verification of color gradients and calendar layout
 4. **Edge Case Tests**: Empty months, leap years, boundary dates
