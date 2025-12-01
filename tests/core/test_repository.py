@@ -479,3 +479,301 @@ def test_count_search_results(in_memory_repo):
     # None keyword returns total count
     count = repo.count_search_results(None)
     assert count == 3
+
+
+def test_get_daily_spending_for_month_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses and income for January 2023
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,  # Expense
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-30.0,  # Another expense same day
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-100.0,  # Expense
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=500.0,  # Income (should be excluded)
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-10"),
+            amount=-25.0,  # Different month (should be excluded)
+            category="Food",
+            description="Lunch",
+        )
+    )
+
+    spending = repo.get_daily_spending_for_month(2023, 1)
+
+    # Should only include expenses from January 2023
+    assert len(spending) == 2
+    assert spending[5] == 80.0  # Day 5: 50 + 30
+    assert spending[15] == 100.0  # Day 15: 100 (income excluded)
+    assert 10 not in spending  # No transactions on day 10
+
+
+def test_get_daily_spending_for_month_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transaction for different month
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    # Query for empty month
+    spending = repo.get_daily_spending_for_month(2023, 3)
+    assert len(spending) == 0
+    assert spending == {}
+
+
+def test_get_daily_spending_excludes_income(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add only income transactions
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=1000.0,  # Positive = income
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=500.0,  # Positive = income
+            category="Income",
+            description="Bonus",
+        )
+    )
+
+    spending = repo.get_daily_spending_for_month(2023, 1)
+
+    # Should return empty since only income (no expenses)
+    assert len(spending) == 0
+    assert spending == {}
+
+
+def test_get_transactions_for_date_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    target = date.fromisoformat("2023-01-05")
+
+    # Add transactions on target date
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=-30.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    # Add transaction on different date (should be excluded)
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-06"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+
+    transactions = repo.get_transactions_for_date(target)
+
+    assert len(transactions) == 2
+    # Verify all returned transactions have the target date
+    assert all(t.date == target for t in transactions)
+
+
+def test_get_transactions_for_date_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transaction on different date
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    # Query for date with no transactions
+    transactions = repo.get_transactions_for_date(date.fromisoformat("2023-01-10"))
+    assert len(transactions) == 0
+    assert transactions == []
+
+
+def test_get_transactions_for_date_ordering(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    target = date.fromisoformat("2023-01-05")
+
+    # Add transactions with different amounts
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=-10.0,
+            category="Food",
+            description="Snack",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=-50.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=target,
+            amount=500.0,  # Income
+            category="Income",
+            description="Paycheck",
+        )
+    )
+
+    transactions = repo.get_transactions_for_date(target)
+
+    # Should be ordered by amount ASC (most negative first, then positive)
+    assert len(transactions) == 4
+    assert transactions[0].amount == -100.0  # Largest expense first
+    assert transactions[1].amount == -50.0
+    assert transactions[2].amount == -10.0
+    assert transactions[3].amount == 500.0  # Income last
+
+
+def test_get_months_with_expenses(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses across different months
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-20"),
+            amount=-30.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2024-02-05"),
+            amount=-75.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+    # Add income (should be excluded)
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-01"),
+            amount=1000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    months = repo.get_months_with_expenses()
+
+    # Should return months with expenses only, most recent first
+    assert len(months) == 3
+    assert months[0] == (2024, 2)  # February 2024
+    assert months[1] == (2023, 3)  # March 2023
+    assert months[2] == (2023, 1)  # January 2023 (duplicate month, single entry)
+    # February 2023 should NOT be included (only income)
+
+
+def test_get_months_with_expenses_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add only income
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=1000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    months = repo.get_months_with_expenses()
+
+    # Should return empty list (no expenses)
+    assert len(months) == 0
+    assert months == []
