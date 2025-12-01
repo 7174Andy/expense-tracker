@@ -1,5 +1,6 @@
 import math
 import tkinter as tk
+from datetime import date
 from tkinter import ttk, messagebox
 
 from expense_tracker.core.repositories import TransactionRepository
@@ -18,6 +19,7 @@ class TransactionsTab(tk.Frame):
         self._page_size = 100
         self._total_transactions = 0
         self._search_keyword: str | None = None
+        self._filter_date: date | None = None
 
         self.pack(fill=tk.BOTH, expand=True)
         self._build_toolbar()
@@ -77,8 +79,16 @@ class TransactionsTab(tk.Frame):
 
         offset = self._current_page * self._page_size
 
-        # Use search if keyword is active, otherwise get all transactions
-        if self._search_keyword:
+        # Use date filter if active, otherwise use search/all transactions
+        if self._filter_date:
+            transactions = self.transaction_repo.get_transactions_for_date(
+                self._filter_date
+            )
+            self._total_transactions = len(transactions)
+            self.search_indicator.config(
+                text=f"Filtered by date: {self._filter_date.isoformat()}"
+            )
+        elif self._search_keyword:
             self._total_transactions = self.transaction_repo.count_search_results(
                 self._search_keyword
             )
@@ -227,6 +237,15 @@ class TransactionsTab(tk.Frame):
 
     def _clear_search(self):
         self._search_keyword = None
+        self._filter_date = None  # Also clear date filter
+        self.qvar.set("")  # Clear the search entry field
+        self._current_page = 0  # Reset to first page
+        self.refresh()
+
+    def filter_by_date(self, target_date: date):
+        """Filter transactions by a specific date."""
+        self._filter_date = target_date
+        self._search_keyword = None  # Clear search when filtering by date
         self.qvar.set("")  # Clear the search entry field
         self._current_page = 0  # Reset to first page
         self.refresh()

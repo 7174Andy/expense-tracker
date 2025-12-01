@@ -1,7 +1,8 @@
 import tkinter as tk
+from datetime import date
 from tkinter import ttk
 
-from expense_tracker.gui.tabs import TransactionsTab
+from expense_tracker.gui.tabs import TransactionsTab, HeatmapTab
 
 
 class MainWindow(tk.Frame):
@@ -23,8 +24,15 @@ class MainWindow(tk.Frame):
             self.notebook, transaction_repo, merchant_repo, self
         )
 
-        # Add tab to notebook
+        # Create Heatmap tab
+        self.heatmap_tab = HeatmapTab(self.notebook, transaction_repo, self)
+
+        # Add tabs to notebook
         self.notebook.add(self.transactions_tab, text="Transactions")
+        self.notebook.add(self.heatmap_tab, text="Heatmap")
+
+        # Bind tab change event for lazy loading
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
     def _open_dialog(self, dialog_class, *args, **kwargs):
         if self._active_dialog is not None and self._active_dialog.winfo_exists():
@@ -51,3 +59,15 @@ class MainWindow(tk.Frame):
 
         self._active_dialog = None
         self.transactions_tab.refresh()
+
+    def _on_tab_changed(self, event):
+        """Refresh tab content when user switches tabs."""
+        current_tab = self.notebook.select()
+        tab_index = self.notebook.index(current_tab)
+        if tab_index == 1:  # Heatmap tab
+            self.heatmap_tab.refresh()
+
+    def show_transactions_for_date(self, target_date: date):
+        """Switch to Transactions tab with date filter applied."""
+        self.notebook.select(0)  # Switch to Transactions tab (index 0)
+        self.transactions_tab.filter_by_date(target_date)
