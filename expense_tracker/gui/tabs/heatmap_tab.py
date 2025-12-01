@@ -39,7 +39,7 @@ class HeatmapTab(tk.Frame):
         self.prev_button.pack(side=tk.LEFT, padx=5)
 
         # Month/Year label
-        self.month_label = ttk.Label(header, text="", font=("Arial", 14, "bold"))
+        self.month_label = ttk.Label(header, text="", font=("Arial", 20, "bold"))
         self.month_label.pack(side=tk.LEFT, expand=True)
 
         # Next month button
@@ -132,14 +132,19 @@ class HeatmapTab(tk.Frame):
         # Day of week headers
         day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for col, day_name in enumerate(day_names):
-            label = tk.Label(
+            # Use Canvas for headers to match cell width exactly
+            header_canvas = tk.Canvas(
                 grid_frame,
-                text=day_name,
-                font=("Arial", 10, "bold"),
-                width=12,
-                height=1,
+                width=90,
+                height=25,
+                highlightthickness=0,
             )
-            label.grid(row=0, column=col, padx=2, pady=2)
+            header_canvas.grid(row=0, column=col, padx=2, pady=2)
+            header_canvas.create_text(
+                45, 12,
+                text=day_name,
+                font=("Arial", 15, "bold"),
+            )
 
         # Get calendar information
         first_weekday, num_days = calendar.monthrange(year, month)
@@ -174,7 +179,7 @@ class HeatmapTab(tk.Frame):
                         highlightthickness=1,
                         highlightbackground="#CCCCCC",
                     )
-                    empty_canvas.grid(row=row, column=weekday, padx=2, pady=2)
+                    empty_canvas.grid(row=row, column=weekday, padx=0, pady=2)
                     # Draw gray background for empty cells
                     empty_canvas.create_rectangle(
                         0, 0, 90, 70,
@@ -197,7 +202,7 @@ class HeatmapTab(tk.Frame):
                         highlightthickness=1,
                         highlightbackground="#999999",
                     )
-                    cell_canvas.grid(row=row, column=weekday, padx=2, pady=2)
+                    cell_canvas.grid(row=row, column=weekday, padx=0, pady=2)
 
                     # Draw colored rectangle as background (this bypasses theme)
                     cell_canvas.create_rectangle(
@@ -211,13 +216,13 @@ class HeatmapTab(tk.Frame):
                         45, 20,
                         text=str(current_day),
                         fill=text_color,
-                        font=("Arial", 12, "bold"),
+                        font=("Arial", 14, "bold"),
                     )
                     cell_canvas.create_text(
                         45, 50,
                         text=f"${spending:.2f}",
                         fill=text_color,
-                        font=("Arial", 9),
+                        font=("Arial", 12),
                     )
 
                     # Bind events
