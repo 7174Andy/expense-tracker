@@ -5,6 +5,8 @@ from expense_tracker.core.repositories import (
 from tkinter import Tk, ttk
 from expense_tracker.gui.main_window import MainWindow
 from expense_tracker.version import versions
+from expense_tracker.utils.path import get_database_path
+from expense_tracker.utils.migration import migrate_legacy_databases
 
 
 def main():
@@ -12,9 +14,16 @@ def main():
 
     versions()
 
-    transaction_repo = TransactionRepository("expense_tracker/data/transactions.db")
+    # Migrate legacy databases if they exist
+    migrate_legacy_databases()
+
+    # Use platform-specific data directory for databases
+    print("Using data directory for databases.")
+    print(f" - Transactions DB: {get_database_path('transactions.db')}")
+    print(f" - Merchant Categories DB: {get_database_path('merchant_categories.db')}")
+    transaction_repo = TransactionRepository(str(get_database_path("transactions.db")))
     merchant_repo = MerchantCategoryRepository(
-        "expense_tracker/data/merchant_categories.db"
+        str(get_database_path("merchant_categories.db"))
     )
     root = Tk()
     root.title("Expense Tracker")
