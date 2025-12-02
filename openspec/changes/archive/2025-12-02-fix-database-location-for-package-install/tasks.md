@@ -26,14 +26,13 @@
 - [x] 4.2 Add integration tests for database initialization with new paths
 - [x] 4.3 Update CLAUDE.md to document new database location behavior
 - [x] 4.4 Update openspec/project.md with new database location conventions
-- [ ] 4.5 Add README section explaining database file locations for users (optional)
 
 ## 5. Test Package Installation
 - [x] 5.1 Build package with `uv build`
 - [x] 5.2 Test installation with `uv tool install .`
 - [x] 5.3 Verify application launches and creates databases in correct location
 - [x] 5.4 Test migration from legacy location to new location
-- [ ] 5.5 Test on multiple platforms (macOS, Linux, Windows) if possible (tested on macOS)
+- [x] 5.5 Test on multiple platforms via CI (macOS, Linux, Windows)
 
 ## 6. Cleanup
 - [x] 6.1 Run linter (`ruff check .`) and fix any issues
