@@ -84,6 +84,12 @@ The application follows a repository pattern with clear separation of concerns:
 - Uses SQLite with two separate databases:
   - `transactions.db` - stores all expense/income transactions
   - `merchant_categories.db` - stores merchant-to-category mappings
+- **Database Location**: Databases are stored in platform-specific user data directories:
+  - macOS: `~/Library/Application Support/spendwise-tracker/`
+  - Linux/Unix: `~/.local/share/spendwise-tracker/`
+  - Windows: `%LOCALAPPDATA%\spendwise-tracker\`
+- Database paths are resolved via `get_database_path()` in [expense_tracker/utils/path.py](expense_tracker/utils/path.py)
+- Legacy databases from `expense_tracker/data/` are automatically migrated on first launch
 
 **Merchant Categorization System:**
 - `normalize_merchant()` ([expense_tracker/utils/merchant_normalizer.py](expense_tracker/utils/merchant_normalizer.py)) standardizes merchant names by:
