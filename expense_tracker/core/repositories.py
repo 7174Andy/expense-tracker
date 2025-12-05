@@ -198,6 +198,83 @@ class TransactionRepository:
         for row in rows.fetchall():
             result[row["day"]] = row["total"]
         return result
+    
+    def get_monthly_cashflow_trend(self, num_months: int) -> list[tuple[int, int, float]]:
+        """
+        Returns a list of (year, month, net_amount) tuples for the past num_months.
+        Net amount is total income minus total expenses for each month.
+        Ordered by year and month ascending.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT 
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month,
+                SUM(amount) as net_amount
+            FROM transactions
+            GROUP BY year, month
+            ORDER BY year DESC, month DESC
+            LIMIT ?
+            """,
+            (num_months,),
+        )
+
+        result: list[tuple[int, int, float]] = []
+        for row in reversed(rows.fetchall()):
+            result.append((row["year"], row["month"], row["net_amount"]))
+        return result
+
+    def get_monthly_net_income(self, year: int, month: int) -> float:
+        """
+        Returns the net income (total income minus total expenses) for a specific month.
+        Positive amount means more income than expenses, negative means more expenses than income.
+        """
+        # Create date range for the month
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1)
+        else:
+            end_date = date(year, month + 1, 1)
+
+        row = self.conn.execute(
+            """
+            SELECT SUM(amount) as net_income
+            FROM transactions
+            WHERE date >= ? AND date < ?
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = row.fetchone()
+        return result["net_income"] if result["net_income"] is not None else 0.0
+
+    def get_top_spending_category(self, year: int, month: int) -> tuple[str, float] | None:
+        """
+        Returns the category with the highest spending (sum of negative amounts) for a specific month.
+        Returns tuple of (category_name, total_spending) or None if no expenses exist.
+        """
+        # Create date range for the month
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1)
+        else:
+            end_date = date(year, month + 1, 1)
+
+        rows = self.conn.execute(
+            """
+            SELECT category, SUM(ABS(amount)) as total
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            GROUP BY category
+            ORDER BY total DESC
+            LIMIT 1
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = rows.fetchone()
+        if result is None:
+            return None
+        return (result["category"], result["total"])
 
     def get_transactions_for_date(self, target_date: date) -> list[Transaction]:
         """
@@ -214,6 +291,48 @@ class TransactionRepository:
             if transaction:
                 transactions.append(transaction)
         return transactions
+    
+    def get_latest_month_with_data(self) -> tuple[int, int]:
+        """
+        Get the most recent month that has transaction data.
+        Falls back to current month if no transactions exist.
+        """
+        # Query for all months with transactions (ordered by most recent first)
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month
+            FROM transactions
+            ORDER BY year DESC, month DESC
+            LIMIT 1
+            """
+        )
+        result = rows.fetchone()
+
+        if result is None:
+            # No transactions exist, default to current month
+            today = date.today()
+            return (today.year, today.month)
+
+        return (result["year"], result["month"])
+    
+
+    def get_all_months_with_data(self) -> list[tuple[int, int]]:
+        """
+        Returns a list of (year, month) tuples for all months that have transaction data.
+        Ordered by year and month descending (most recent first).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month
+            FROM transactions
+            ORDER BY year DESC, month DESC
+            """
+        )
+        return {(row["year"], row["month"]) for row in rows.fetchall()}
 
     def get_months_with_expenses(self) -> list[tuple[int, int]]:
         """
