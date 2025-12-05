@@ -2,21 +2,21 @@ import calendar
 import tkinter as tk
 from tkinter import ttk
 
-from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.services.statistics import StatisticsService
 
 
 class StatisticsTab(tk.Frame):
-    def __init__(self, master, transaction_repo: TransactionRepository):
+    def __init__(self, master, statistics_service: StatisticsService):
         super().__init__(master)
-        self.transaction_repo: TransactionRepository = transaction_repo
+        self.statistics_service = statistics_service
 
         # State: the latest month and year where the record is available
-        latest_year, latest_month = self.transaction_repo.get_latest_month_with_data()
+        latest_year, latest_month = self.statistics_service.get_latest_available_month()
         self._current_year = latest_year
         self._current_month = latest_month
 
         # Cache all months with data for navigation button state management
-        self._months_with_data = self.transaction_repo.get_all_months_with_data()
+        self._months_with_data = self.statistics_service.get_available_months()
 
         self.pack(fill=tk.BOTH, expand=True)
 
@@ -173,27 +173,25 @@ class StatisticsTab(tk.Frame):
 
     def _update_metrics(self):
         """Update metric displays with current month data."""
-        # Get monthly net income
-        net_income = self.transaction_repo.get_monthly_net_income(
+        # Get monthly metrics from statistics service
+        metrics = self.statistics_service.get_monthly_metrics(
             self._current_year, self._current_month
         )
 
         # Format and color code net income
-        formatted_income = f"${abs(net_income):,.2f}"
-        if net_income < 0:
+        formatted_income = f"${abs(metrics.net_income):,.2f}"
+        if metrics.net_income < 0:
             formatted_income = f"-{formatted_income}"
             color = "#ff4444"  # Red for negative
-        elif net_income > 0:
+        elif metrics.net_income > 0:
             color = "#44ff44"  # Green for positive
         else:
             color = "#ffffff"  # White for zero
 
         self.net_income_label.config(text=formatted_income, fg=color)
 
-        # Get top spending category
-        top_category = self.transaction_repo.get_top_spending_category(
-            self._current_year, self._current_month
-        )
+        # Display top spending category
+        top_category = (metrics.top_category, metrics.top_category_spending) if metrics.top_category else None
 
         if top_category is None:
             self.top_category_name_label.config(text="N/A")

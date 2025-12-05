@@ -3,13 +3,13 @@ import tkinter as tk
 from datetime import date
 from tkinter import ttk
 
-from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.services.statistics import StatisticsService
 
 
 class HeatmapTab(tk.Frame):
-    def __init__(self, master, transaction_repo: TransactionRepository, main_window):
+    def __init__(self, master, statistics_service: StatisticsService, main_window):
         super().__init__(master)
-        self.transaction_repo: TransactionRepository = transaction_repo
+        self.statistics_service = statistics_service
         self.main_window = main_window
 
         # State
@@ -89,7 +89,7 @@ class HeatmapTab(tk.Frame):
     def refresh(self):
         """Fetch data and rebuild calendar grid."""
         # Get all months with expenses
-        self._months_with_expenses = self.transaction_repo.get_months_with_expenses()
+        self._months_with_expenses = self.statistics_service.get_available_months(expenses_only=True)
 
         # Reset to most recent month
         self._current_index = 0
@@ -121,7 +121,7 @@ class HeatmapTab(tk.Frame):
         year, month = self._months_with_expenses[self._current_index]
 
         # Fetch spending data for current month
-        self._spending_data = self.transaction_repo.get_daily_spending_for_month(
+        self._spending_data = self.statistics_service.get_spending_heatmap_data(
             year, month
         )
 

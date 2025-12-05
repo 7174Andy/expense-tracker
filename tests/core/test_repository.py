@@ -528,7 +528,7 @@ def test_get_daily_spending_for_month_with_data(in_memory_repo):
         )
     )
 
-    spending = repo.get_daily_spending_for_month(2023, 1)
+    spending = repo.get_daily_spending_range(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should only include expenses from January 2023
     assert len(spending) == 2
@@ -551,7 +551,7 @@ def test_get_daily_spending_for_month_empty(in_memory_repo):
     )
 
     # Query for empty month
-    spending = repo.get_daily_spending_for_month(2023, 3)
+    spending = repo.get_daily_spending_range(date(2023, 3, 1), date(2023, 4, 1))
     assert len(spending) == 0
     assert spending == {}
 
@@ -578,7 +578,7 @@ def test_get_daily_spending_excludes_income(in_memory_repo):
         )
     )
 
-    spending = repo.get_daily_spending_for_month(2023, 1)
+    spending = repo.get_daily_spending_range(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return empty since only income (no expenses)
     assert len(spending) == 0
@@ -817,7 +817,7 @@ def test_get_monthly_net_income_with_income_and_expenses(in_memory_repo):
         )
     )
 
-    net_income = repo.get_monthly_net_income(2023, 1)
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
 
     # Net income = 1000 + 200 - 50 - 25 = 1125
     assert net_income == 1125.0
@@ -845,7 +845,7 @@ def test_get_monthly_net_income_only_expenses(in_memory_repo):
         )
     )
 
-    net_income = repo.get_monthly_net_income(2023, 1)
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
 
     # Net income = -100 - 50 = -150
     assert net_income == -150.0
@@ -865,7 +865,7 @@ def test_get_monthly_net_income_no_transactions(in_memory_repo):
     )
 
     # Query for month with no transactions
-    net_income = repo.get_monthly_net_income(2023, 1)
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return 0.0 for empty month
     assert net_income == 0.0
@@ -884,7 +884,7 @@ def test_get_monthly_net_income_only_income(in_memory_repo):
         )
     )
 
-    net_income = repo.get_monthly_net_income(2023, 1)
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
 
     assert net_income == 2000.0
 
@@ -929,7 +929,7 @@ def test_get_top_spending_category_with_multiple_categories(in_memory_repo):
         )
     )
 
-    top_category = repo.get_top_spending_category(2023, 1)
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
 
     # Groceries has highest spending: 100 + 50 = 150
     assert top_category is not None
@@ -959,7 +959,7 @@ def test_get_top_spending_category_exclude_income(in_memory_repo):
         )
     )
 
-    top_category = repo.get_top_spending_category(2023, 1)
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return Food, not Income
     assert top_category is not None
@@ -980,7 +980,7 @@ def test_get_top_spending_category_no_expenses(in_memory_repo):
         )
     )
 
-    top_category = repo.get_top_spending_category(2023, 1)
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return None when no expenses exist
     assert top_category is None
@@ -1000,7 +1000,7 @@ def test_get_top_spending_category_empty_month(in_memory_repo):
     )
 
     # Query for month with no transactions
-    top_category = repo.get_top_spending_category(2023, 1)
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return None
     assert top_category is None

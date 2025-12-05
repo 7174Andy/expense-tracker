@@ -170,18 +170,11 @@ class TransactionRepository:
         self.conn.execute(query, values)
         self.conn.commit()
 
-    def get_daily_spending_for_month(self, year: int, month: int) -> dict[int, float]:
+    def get_daily_spending_range(self, start_date: date, end_date: date) -> dict[int, float]:
         """
         Returns a dictionary mapping day-of-month (1-31) to total spending.
         Only includes expenses (negative amounts).
         """
-        # Create date range for the month
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-
         rows = self.conn.execute(
             """
             SELECT CAST(strftime('%d', date) AS INTEGER) as day,
@@ -224,18 +217,12 @@ class TransactionRepository:
             result.append((row["year"], row["month"], row["net_amount"]))
         return result
 
-    def get_monthly_net_income(self, year: int, month: int) -> float:
+    def get_monthly_net_income(self, start_date: date, end_date: date) -> float:
         """
         Returns the net income (total income minus total expenses) for a specific month.
         Positive amount means more income than expenses, negative means more expenses than income.
         """
         # Create date range for the month
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-
         row = self.conn.execute(
             """
             SELECT SUM(amount) as net_income
@@ -247,18 +234,11 @@ class TransactionRepository:
         result = row.fetchone()
         return result["net_income"] if result["net_income"] is not None else 0.0
 
-    def get_top_spending_category(self, year: int, month: int) -> tuple[str, float] | None:
+    def get_top_spending_category(self, start_date: date, end_date: date) -> tuple[str, float] | None:
         """
         Returns the category with the highest spending (sum of negative amounts) for a specific month.
         Returns tuple of (category_name, total_spending) or None if no expenses exist.
         """
-        # Create date range for the month
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-
         rows = self.conn.execute(
             """
             SELECT category, SUM(ABS(amount)) as total
