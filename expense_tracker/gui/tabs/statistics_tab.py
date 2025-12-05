@@ -2,7 +2,7 @@ import calendar
 import tkinter as tk
 from tkinter import ttk
 
-from expense_tracker.core.repositories import TransactionRepository
+from expense_tracker.core.transaction_repository import TransactionRepository
 
 
 class StatisticsTab(tk.Frame):

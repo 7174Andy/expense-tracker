@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 from expense_tracker.core.models import Transaction
-from expense_tracker.core.repositories import TransactionRepository
+from expense_tracker.core.transaction_repository import TransactionRepository
 
 
 class AddExpenseDialog(tk.Toplevel):

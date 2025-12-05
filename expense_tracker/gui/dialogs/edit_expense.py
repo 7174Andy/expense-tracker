@@ -1,10 +1,9 @@
 import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
-from expense_tracker.core.repositories import (
-    TransactionRepository,
-    MerchantCategoryRepository,
-)
+
+from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.core.merchant_repository import MerchantCategoryRepository
 from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 

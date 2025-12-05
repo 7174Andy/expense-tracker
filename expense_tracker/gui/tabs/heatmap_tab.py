@@ -3,7 +3,7 @@ import tkinter as tk
 from datetime import date
 from tkinter import ttk
 
-from expense_tracker.core.repositories import TransactionRepository
+from expense_tracker.core.transaction_repository import TransactionRepository
 
 
 class HeatmapTab(tk.Frame):

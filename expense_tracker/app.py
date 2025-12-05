@@ -1,13 +1,11 @@
-from expense_tracker.core.repositories import (
-    TransactionRepository,
-    MerchantCategoryRepository,
-)
 from tkinter import Tk, ttk
 from expense_tracker.gui.main_window import MainWindow
+
 from expense_tracker.version import versions
 from expense_tracker.utils.path import get_database_path
 from expense_tracker.utils.migration import migrate_legacy_databases
-
+from expense_tracker.core.merchant_repository import MerchantCategoryRepository
+from expense_tracker.core.transaction_repository import TransactionRepository
 
 def main():
     """Start the Expense Tracker application."""

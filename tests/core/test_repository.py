@@ -3,10 +3,8 @@ from datetime import date
 import pytest
 
 from expense_tracker.core.models import MerchantCategory, Transaction
-from expense_tracker.core.repositories import (
-    MerchantCategoryRepository,
-    TransactionRepository,
-)
+from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.core.merchant_repository import MerchantCategoryRepository
 
 
 @pytest.fixture

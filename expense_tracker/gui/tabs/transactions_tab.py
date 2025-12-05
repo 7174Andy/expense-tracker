@@ -3,7 +3,7 @@ import tkinter as tk
 from datetime import date
 from tkinter import ttk, messagebox
 
-from expense_tracker.core.repositories import TransactionRepository
+from expense_tracker.core.transaction_repository import TransactionRepository
 from expense_tracker.gui.dialogs.add_expense import AddExpenseDialog
 from expense_tracker.gui.dialogs.edit_expense import EditExpenseDialog
 from expense_tracker.gui.dialogs.upload import UploadDialog
