@@ -3,7 +3,7 @@ import sqlite3
 from dataclasses import replace
 from datetime import date
 
-from expense_tracker.core.models import Transaction, MerchantCategory
+from expense_tracker.core.models import Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -170,18 +170,11 @@ class TransactionRepository:
         self.conn.execute(query, values)
         self.conn.commit()
 
-    def get_daily_spending_for_month(self, year: int, month: int) -> dict[int, float]:
+    def get_daily_spending_range(self, start_date: date, end_date: date) -> dict[int, float]:
         """
         Returns a dictionary mapping day-of-month (1-31) to total spending.
         Only includes expenses (negative amounts).
         """
-        # Create date range for the month
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-
         rows = self.conn.execute(
             """
             SELECT CAST(strftime('%d', date) AS INTEGER) as day,
@@ -198,6 +191,70 @@ class TransactionRepository:
         for row in rows.fetchall():
             result[row["day"]] = row["total"]
         return result
+    
+    def get_monthly_cashflow_trend(self, num_months: int) -> list[tuple[int, int, float]]:
+        """
+        Returns a list of (year, month, net_amount) tuples for the past num_months.
+        Net amount is total income minus total expenses for each month.
+        Ordered by year and month ascending.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT 
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month,
+                SUM(amount) as net_amount
+            FROM transactions
+            GROUP BY year, month
+            ORDER BY year DESC, month DESC
+            LIMIT ?
+            """,
+            (num_months,),
+        )
+
+        result: list[tuple[int, int, float]] = []
+        for row in reversed(rows.fetchall()):
+            result.append((row["year"], row["month"], row["net_amount"]))
+        return result
+
+    def get_monthly_net_income(self, start_date: date, end_date: date) -> float:
+        """
+        Returns the net income (total income minus total expenses) for a specific month.
+        Positive amount means more income than expenses, negative means more expenses than income.
+        """
+        # Create date range for the month
+        row = self.conn.execute(
+            """
+            SELECT SUM(amount) as net_income
+            FROM transactions
+            WHERE date >= ? AND date < ?
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = row.fetchone()
+        return result["net_income"] if result["net_income"] is not None else 0.0
+
+    def get_top_spending_category(self, start_date: date, end_date: date) -> tuple[str, float] | None:
+        """
+        Returns the category with the highest spending (sum of negative amounts) for a specific month.
+        Returns tuple of (category_name, total_spending) or None if no expenses exist.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT category, SUM(ABS(amount)) as total
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            GROUP BY category
+            ORDER BY total DESC
+            LIMIT 1
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = rows.fetchone()
+        if result is None:
+            return None
+        return (result["category"], result["total"])
 
     def get_transactions_for_date(self, target_date: date) -> list[Transaction]:
         """
@@ -214,6 +271,48 @@ class TransactionRepository:
             if transaction:
                 transactions.append(transaction)
         return transactions
+    
+    def get_latest_month_with_data(self) -> tuple[int, int]:
+        """
+        Get the most recent month that has transaction data.
+        Falls back to current month if no transactions exist.
+        """
+        # Query for all months with transactions (ordered by most recent first)
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month
+            FROM transactions
+            ORDER BY year DESC, month DESC
+            LIMIT 1
+            """
+        )
+        result = rows.fetchone()
+
+        if result is None:
+            # No transactions exist, default to current month
+            today = date.today()
+            return (today.year, today.month)
+
+        return (result["year"], result["month"])
+    
+
+    def get_all_months_with_data(self) -> list[tuple[int, int]]:
+        """
+        Returns a list of (year, month) tuples for all months that have transaction data.
+        Ordered by year and month descending (most recent first).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT
+                CAST(strftime('%Y', date) AS INTEGER) as year,
+                CAST(strftime('%m', date) AS INTEGER) as month
+            FROM transactions
+            ORDER BY year DESC, month DESC
+            """
+        )
+        return {(row["year"], row["month"]) for row in rows.fetchall()}
 
     def get_months_with_expenses(self) -> list[tuple[int, int]]:
         """
@@ -237,60 +336,3 @@ class TransactionRepository:
         return result
 
 
-class MerchantCategoryRepository:
-    """
-    A repository for managing merchant categories.
-    """
-
-    def __init__(self, db_path: str):
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self._init_schema()
-        logger.info("Initialized merchant category database schema")
-
-    def _init_schema(self) -> None:
-        self.conn.executescript("""
-            CREATE TABLE IF NOT EXISTS merchant_categories (
-                merchant_key TEXT PRIMARY KEY,
-                category TEXT NOT NULL
-            );
-        """)
-
-    def _row_to_merchant_category(
-        self, row: sqlite3.Row | None
-    ) -> MerchantCategory | None:
-        if row is None:
-            return None
-        return MerchantCategory(
-            merchant_key=row["merchant_key"],
-            category=row["category"],
-        )
-
-    def set_category(self, merchant_category: MerchantCategory) -> None:
-        """Sets or updates the category for a given merchant key."""
-        self.conn.execute(
-            """
-            INSERT INTO merchant_categories (merchant_key, category)
-            VALUES (?, ?)
-            ON CONFLICT(merchant_key) DO UPDATE SET category=excluded.category
-        """,
-            (merchant_category.merchant_key, merchant_category.category),
-        )
-        self.conn.commit()
-
-    def get_category(self, merchant_key: str) -> MerchantCategory | None:
-        """Retrieves the category for a given merchant key."""
-        row = self.conn.execute(
-            "SELECT * FROM merchant_categories WHERE merchant_key = ?", (merchant_key,)
-        )
-        return self._row_to_merchant_category(row.fetchone())
-
-    def get_all_merchants(self) -> list[MerchantCategory]:
-        """Retrieves all merchant categories."""
-        rows = self.conn.execute("SELECT * FROM merchant_categories")
-        merchants = []
-        for row in rows.fetchall():
-            merchant = self._row_to_merchant_category(row)
-            if merchant:
-                merchants.append(merchant)
-        return merchants

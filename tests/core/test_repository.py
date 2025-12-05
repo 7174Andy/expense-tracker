@@ -3,10 +3,8 @@ from datetime import date
 import pytest
 
 from expense_tracker.core.models import MerchantCategory, Transaction
-from expense_tracker.core.repositories import (
-    MerchantCategoryRepository,
-    TransactionRepository,
-)
+from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.core.merchant_repository import MerchantCategoryRepository
 
 
 @pytest.fixture
@@ -530,7 +528,7 @@ def test_get_daily_spending_for_month_with_data(in_memory_repo):
         )
     )
 
-    spending = repo.get_daily_spending_for_month(2023, 1)
+    spending = repo.get_daily_spending_range(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should only include expenses from January 2023
     assert len(spending) == 2
@@ -553,7 +551,7 @@ def test_get_daily_spending_for_month_empty(in_memory_repo):
     )
 
     # Query for empty month
-    spending = repo.get_daily_spending_for_month(2023, 3)
+    spending = repo.get_daily_spending_range(date(2023, 3, 1), date(2023, 4, 1))
     assert len(spending) == 0
     assert spending == {}
 
@@ -580,7 +578,7 @@ def test_get_daily_spending_excludes_income(in_memory_repo):
         )
     )
 
-    spending = repo.get_daily_spending_for_month(2023, 1)
+    spending = repo.get_daily_spending_range(date(2023, 1, 1), date(2023, 2, 1))
 
     # Should return empty since only income (no expenses)
     assert len(spending) == 0
@@ -777,3 +775,382 @@ def test_get_months_with_expenses_empty(in_memory_repo):
     # Should return empty list (no expenses)
     assert len(months) == 0
     assert months == []
+
+
+def test_get_monthly_net_income_with_income_and_expenses(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add income and expenses for January 2023
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=1000.0,  # Income
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-50.0,  # Expense
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-25.0,  # Expense
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-20"),
+            amount=200.0,  # Income
+            category="Income",
+            description="Bonus",
+        )
+    )
+
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Net income = 1000 + 200 - 50 - 25 = 1125
+    assert net_income == 1125.0
+
+
+def test_get_monthly_net_income_only_expenses(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add only expenses
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Net income = -100 - 50 = -150
+    assert net_income == -150.0
+
+
+def test_get_monthly_net_income_no_transactions(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transaction for different month
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-10"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    # Query for month with no transactions
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Should return 0.0 for empty month
+    assert net_income == 0.0
+
+
+def test_get_monthly_net_income_only_income(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add only income
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    net_income = repo.get_monthly_net_income(date(2023, 1, 1), date(2023, 2, 1))
+
+    assert net_income == 2000.0
+
+
+def test_get_top_spending_category_with_multiple_categories(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses in different categories
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-100.0,
+            category="Groceries",
+            description="Whole Foods",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-50.0,
+            category="Groceries",
+            description="Trader Joes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-75.0,
+            category="Restaurants",
+            description="Dinner",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-20"),
+            amount=-25.0,
+            category="Transportation",
+            description="Uber",
+        )
+    )
+
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Groceries has highest spending: 100 + 50 = 150
+    assert top_category is not None
+    assert top_category[0] == "Groceries"
+    assert top_category[1] == 150.0
+
+
+def test_get_top_spending_category_exclude_income(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add income and expenses
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=2000.0,  # Income (should be excluded)
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Should return Food, not Income
+    assert top_category is not None
+    assert top_category[0] == "Food"
+    assert top_category[1] == 50.0
+
+
+def test_get_top_spending_category_no_expenses(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add only income
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=1000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Should return None when no expenses exist
+    assert top_category is None
+
+
+def test_get_top_spending_category_empty_month(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transaction for different month
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-10"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    # Query for month with no transactions
+    top_category = repo.get_top_spending_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Should return None
+    assert top_category is None
+
+
+def test_get_latest_month_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transactions across different months
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2024-02-05"),
+            amount=-75.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+
+    latest_year, latest_month = repo.get_latest_month_with_data()
+
+    # Should return the most recent month (February 2024)
+    assert latest_year == 2024
+    assert latest_month == 2
+
+
+def test_get_latest_month_with_data_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # No transactions
+
+    latest_year, latest_month = repo.get_latest_month_with_data()
+
+    # Should return current month when no transactions exist
+    today = date.today()
+    assert latest_year == today.year
+    assert latest_month == today.month
+
+
+def test_get_all_months_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transactions across different months
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-20"),
+            amount=-30.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2024-02-05"),
+            amount=-75.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+
+    months = repo.get_all_months_with_data()
+
+    # Should return a set of all (year, month) tuples with data
+    assert isinstance(months, set)
+    assert len(months) == 3
+    assert (2023, 1) in months  # January 2023 (two transactions)
+    assert (2023, 3) in months  # March 2023
+    assert (2024, 2) in months  # February 2024
+
+
+def test_get_all_months_with_data_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # No transactions
+
+    months = repo.get_all_months_with_data()
+
+    # Should return empty set
+    assert isinstance(months, set)
+    assert len(months) == 0
+
+
+def test_get_all_months_with_data_single_month(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add multiple transactions in the same month
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-05-10"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-05-15"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-05-25"),
+            amount=-30.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+
+    months = repo.get_all_months_with_data()
+
+    # Should return set with single month (no duplicates)
+    assert isinstance(months, set)
+    assert len(months) == 1
+    assert (2023, 5) in months
