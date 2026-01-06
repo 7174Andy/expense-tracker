@@ -17,8 +17,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.4.2",
-    "ruff>=0.14.4",
+    "pytest",
+    "ruff",
+]
+
+docs = [
+    "mkdocs-material",
 ]
 
 [project.scripts]

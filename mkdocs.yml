@@ -1,0 +1,4 @@
+site_name: My Docs
+site_url: https://7174Andy.github.io/spendwise
+theme:
+  name: material
