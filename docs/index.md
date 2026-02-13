@@ -1,80 +1,120 @@
 # Spendwise Expense Tracker
 
-**Spendwise** is an open-source desktop application to track expenses by importing Bank of America PDF statements. It features intelligent merchant categorization, monthly spending statistics, and interactive heatmap visualizations to help you understand your spending patterns.
+**Take control of your spending.** Spendwise is an open-source desktop app that imports your Bank of America PDF statements, automatically categorizes transactions, and visualizes your spending patterns -- all locally on your machine.
+
+[Get Started](getting-started.md){ .md-button .md-button--primary }
+[Installation](installation.md){ .md-button }
+
+---
 
 ## Features
 
-- **PDF Statement Import** - Import Bank of America PDF statements with automatic transaction extraction
-- **Smart Categorization** - Intelligent merchant recognition with fuzzy matching (90% accuracy threshold)
-- **Transaction Management** - Add, edit, delete, and search transactions with pagination
-- **Monthly Statistics** - View net income and top spending categories by month
-- **Spending Heatmap** - Interactive calendar showing daily spending intensity with color-coded visualization
-- **Auto-Recategorization** - Update a merchant's category once, and similar transactions are automatically recategorized
+<div class="grid cards" markdown>
 
-## Installation
+-   :material-file-pdf-box:{ .lg .middle } **PDF Statement Import**
 
-Spendwise is installed as a Python package. It is strongly recommended to install the package via [uv](https://docs.astral.sh/uv/).
+    ---
 
-Latest versions of Spendwise can be seen in the [Release](https://github.com/7174Andy/expense-tracker/releases) page.
+    Import Bank of America PDF statements and automatically extract every transaction -- no manual data entry needed.
 
-### Requirements
+-   :material-tag-text:{ .lg .middle } **Smart Categorization**
 
-- Python 3.11 or higher
-- macOS, Linux, or Windows
+    ---
 
-### Quick Install
+    Intelligent merchant recognition using fuzzy matching with a 90% accuracy threshold. Categorize once, and Spendwise remembers.
 
-First, install `uv` if you haven't already:
+    [:octicons-arrow-right-24: How it works](categorization.md)
 
-```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+-   :material-table-edit:{ .lg .middle } **Transaction Management**
 
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
+    ---
 
-Then, install Spendwise Tracker:
+    Add, edit, delete, and search transactions with a clean tabular interface and pagination.
 
-```bash
-uv tool install spendwise-tracker
-```
+-   :material-chart-bar:{ .lg .middle } **Monthly Statistics**
 
-Run the GUI after installation:
+    ---
+
+    View net income and top spending categories by month to understand where your money goes.
+
+-   :material-calendar-month:{ .lg .middle } **Spending Heatmap**
+
+    ---
+
+    Interactive calendar visualization with color-coded daily spending. Click any day to drill into its transactions.
+
+-   :material-sync:{ .lg .middle } **Auto-Recategorization**
+
+    ---
+
+    Update a merchant's category once, and all matching uncategorized transactions are instantly recategorized.
+
+</div>
+
+## Quick Install
+
+Install with [uv](https://docs.astral.sh/uv/) in two commands:
+
+=== "macOS / Linux"
+
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv tool install spendwise-tracker
+    ```
+
+=== "Windows"
+
+    ```powershell
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    uv tool install spendwise-tracker
+    ```
+
+Then launch the app:
 
 ```bash
 expense-tracker
 ```
 
+!!! tip "Need more details?"
+    See the full [Installation Guide](installation.md) for version pinning, troubleshooting, and uninstall instructions.
+
 ## Quick Start
 
-### Importing Transactions
+<div class="grid cards" markdown>
 
-1. Click the **Import Statement** button in the Transactions tab
-2. Select a Bank of America PDF statement
-3. Transactions are automatically parsed and categorized
+-   :material-numeric-1-circle:{ .lg .middle } **Import a statement**
 
-### Managing Transactions
+    ---
 
-- **View**: Browse transactions with pagination (100 per page)
-- **Search**: Use the search bar to filter transactions by keyword
-- **Add**: Click "Add Transaction" to manually enter a transaction
-- **Edit**: Double-click a transaction or select and click "Edit Transaction"
-- **Delete**: Select a transaction and click "Delete Transaction"
+    Click **Import Statement** in the toolbar, select a Bank of America PDF, and your transactions appear instantly.
 
-### Viewing Statistics
+-   :material-numeric-2-circle:{ .lg .middle } **Review & categorize**
 
-1. Navigate to the **Statistics** tab
-2. Use the `<` and `>` buttons to browse months with transaction data
-3. View monthly net income and top spending category
+    ---
 
-### Analyzing Spending Patterns
+    Double-click any transaction to edit its category. Spendwise learns and applies the mapping to future imports.
 
-1. Navigate to the **Heatmap** tab
-2. View daily spending amounts on an interactive calendar
-3. Darker colors indicate higher spending
-4. Click on any day to filter transactions by that date
+-   :material-numeric-3-circle:{ .lg .middle } **Search & browse**
+
+    ---
+
+    Use the search bar to filter by keyword. Navigate pages with **Previous** / **Next** (100 transactions per page).
+
+-   :material-numeric-4-circle:{ .lg .middle } **Explore your data**
+
+    ---
+
+    Switch to the **Statistics** tab for monthly summaries or the **Heatmap** tab for a calendar view of daily spending.
+
+</div>
+
+## Requirements
+
+| | Requirement |
+|---|---|
+| :material-language-python: | Python 3.11 or higher |
+| :material-desktop-classic: | macOS, Linux, or Windows |
 
 ## License
 
-Spendwise is released under MIT License.
+Spendwise is released under the [MIT License](https://github.com/7174Andy/expense-tracker/blob/main/LICENSE).

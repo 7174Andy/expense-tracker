@@ -2,6 +2,8 @@ site_name: Spendwise Documentation
 site_url: https://7174Andy.github.io/spendwise
 theme:
   name: material
+  icon:
+    repo: fontawesome/brands/github
   palette:
     # Palette toggle for dark mode
     - scheme: slate
