@@ -63,3 +63,5 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Getting Started: getting-started.md
+  - Categorization: categorization.md
