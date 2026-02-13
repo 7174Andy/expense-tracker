@@ -23,6 +23,7 @@ dev = [
 
 docs = [
     "mkdocs-material",
+    "mike",
 ]
 
 [project.scripts]
