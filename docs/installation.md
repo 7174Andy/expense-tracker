@@ -56,17 +56,7 @@ Check the [Releases](https://github.com/7174Andy/expense-tracker/releases) page 
 
 After installation, verify that Spendwise Tracker is working correctly:
 
-### 1. Check the Command
-
-Verify that the `expense-tracker` command is available:
-
-```bash
-expense-tracker --version
-```
-
-This should display the installed version number.
-
-### 2. Launch the Application
+### 1. Launch the Application
 
 Start the application to ensure the GUI launches properly:
 
@@ -76,7 +66,7 @@ expense-tracker
 
 The Spendwise Tracker GUI window should open. If the application starts successfully, the installation is complete!
 
-### 3. Verify Database Location
+### 2. Verify Database Location
 
 On first launch, Spendwise Tracker will create its database files in a platform-specific location:
 

@@ -58,9 +58,9 @@ expense-tracker
 
 - **View**: Browse transactions with pagination (100 per page)
 - **Search**: Use the search bar to filter transactions by keyword
-- **Add**: Click "Add Expense" to manually enter a transaction
-- **Edit**: Double-click a transaction or select and click "Edit"
-- **Delete**: Select a transaction and click "Delete"
+- **Add**: Click "Add Transaction" to manually enter a transaction
+- **Edit**: Double-click a transaction or select and click "Edit Transaction"
+- **Delete**: Select a transaction and click "Delete Transaction"
 
 ### Viewing Statistics
 

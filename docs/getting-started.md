@@ -47,7 +47,7 @@ After importing, your transactions appear in the table with the following column
 You can also add transactions by hand:
 
 1. Click **Add Transaction** in the toolbar
-2. Fill in the date, amount, category, and description
+2. Fill in the amount, category, and description (the date defaults to today)
 3. Click **Save**
 
 ## Editing a Transaction
