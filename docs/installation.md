@@ -14,17 +14,17 @@ Before installing Spendwise Tracker, ensure your system meets the following requ
 
 Spendwise Tracker is distributed as a Python package and is best installed using [uv](https://docs.astral.sh/uv/), a fast Python package installer and resolver.
 
-### macOS and Linux
+=== "macOS / Linux"
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
 
-### Windows
+=== "Windows"
 
-```powershell
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
+    ```powershell
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
 
 After installation, you may need to restart your terminal or add uv to your PATH.
 
@@ -70,9 +70,23 @@ The Spendwise Tracker GUI window should open. If the application starts successf
 
 On first launch, Spendwise Tracker will create its database files in a platform-specific location:
 
-- **macOS**: `~/Library/Application Support/spendwise-tracker/`
-- **Linux/Unix**: `~/.local/share/spendwise-tracker/`
-- **Windows**: `%LOCALAPPDATA%\spendwise-tracker\`
+=== "macOS"
+
+    ```
+    ~/Library/Application Support/spendwise-tracker/
+    ```
+
+=== "Linux / Unix"
+
+    ```
+    ~/.local/share/spendwise-tracker/
+    ```
+
+=== "Windows"
+
+    ```
+    %LOCALAPPDATA%\spendwise-tracker\
+    ```
 
 You can verify these directories exist after launching the application once.
 
@@ -84,18 +98,31 @@ If you get a "command not found" error after installation:
 
 1. **Check if uv's bin directory is in your PATH**:
 
-   ```bash
-   echo $PATH  # macOS/Linux
-   echo %PATH% # Windows
-   ```
+    === "macOS / Linux"
+
+        ```bash
+        echo $PATH
+        ```
+
+    === "Windows"
+
+        ```powershell
+        echo %PATH%
+        ```
 
 2. **Add uv's bin directory to your PATH**:
 
-   - **macOS/Linux**: Add to `~/.bashrc` or `~/.zshrc`:
-     ```bash
-     export PATH="$HOME/.local/bin:$PATH"
-     ```
-   - **Windows**: uv typically adds itself to PATH automatically during installation
+    === "macOS / Linux"
+
+        Add to `~/.bashrc` or `~/.zshrc`:
+
+        ```bash
+        export PATH="$HOME/.local/bin:$PATH"
+        ```
+
+    === "Windows"
+
+        uv typically adds itself to PATH automatically during installation.
 
 3. **Restart your terminal** and try again
 
@@ -150,23 +177,23 @@ This will remove the application but **will not delete your data**.
 
 If you also want to delete your transaction data and merchant categories, manually remove the data directory:
 
-#### macOS
+=== "macOS"
 
-```bash
-rm -rf ~/Library/Application\ Support/spendwise-tracker/
-```
+    ```bash
+    rm -rf ~/Library/Application\ Support/spendwise-tracker/
+    ```
 
-#### Linux/Unix
+=== "Linux / Unix"
 
-```bash
-rm -rf ~/.local/share/spendwise-tracker/
-```
+    ```bash
+    rm -rf ~/.local/share/spendwise-tracker/
+    ```
 
-#### Windows
+=== "Windows"
 
-```powershell
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\spendwise-tracker"
-```
+    ```powershell
+    Remove-Item -Recurse -Force "$env:LOCALAPPDATA\spendwise-tracker"
+    ```
 
 !!! warning "Data Loss Warning"
 
