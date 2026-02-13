@@ -179,20 +179,12 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\spendwise-tracker"
 ```
 
 !!! warning "Data Loss Warning"
+
 Deleting the data directory will permanently remove all your transactions, merchant categories, and settings. This action cannot be undone. Make sure to back up your data if needed before proceeding.
-
-## Next Steps
-
-Now that you have Spendwise Tracker installed, check out:
-
-- [Quick Start Guide](quickstart.md) - Learn how to use the application
-- [User Guide](user-guide.md) - Detailed feature documentation
-- [FAQ](faq.md) - Common questions and answers
 
 ## Getting Help
 
 If you encounter issues not covered in this guide:
 
 1. Check the [GitHub Issues](https://github.com/7174Andy/expense-tracker/issues) page
-2. Review the [FAQ](faq.md) documentation
-3. Open a new issue with details about your problem
+2. Open a new issue with details about your problem
