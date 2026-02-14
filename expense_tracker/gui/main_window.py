@@ -54,7 +54,7 @@ class MainWindow(tk.Frame):
             if dialog.winfo_exists():
                 dialog.destroy()
             self._active_dialog = None
-            self.transactions_tab.refresh()
+            self._refresh_active_tab()
 
         dialog.protocol("WM_DELETE_WINDOW", on_close)
         dialog.transient(self.master)
@@ -63,16 +63,22 @@ class MainWindow(tk.Frame):
         self.master.wait_window(dialog)
 
         self._active_dialog = None
-        self.transactions_tab.refresh()
+        self._refresh_active_tab()
+
+    def _refresh_active_tab(self):
+        """Refresh whichever tab is currently visible."""
+        current_tab = self.notebook.select()
+        tab_index = self.notebook.index(current_tab)
+        if tab_index == 0:
+            self.transactions_tab.refresh()
+        elif tab_index == 1:
+            self.statistics_tab.refresh()
+        elif tab_index == 2:
+            self.heatmap_tab.refresh()
 
     def _on_tab_changed(self, event):
         """Refresh tab content when user switches tabs."""
-        current_tab = self.notebook.select()
-        tab_index = self.notebook.index(current_tab)
-        if tab_index == 1:  # Statistics tab
-            self.statistics_tab.refresh()
-        elif tab_index == 2:  # Heatmap tab
-            self.heatmap_tab.refresh()
+        self._refresh_active_tab()
 
     def show_transactions_for_date(self, target_date: date):
         """Switch to Transactions tab with date filter applied."""
