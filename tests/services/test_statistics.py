@@ -362,3 +362,134 @@ def test_get_cashflow_trend(in_memory_repo, statistics_service):
     assert trend[0] == (2023, 1, 1500.0)  # 2000 - 500
     # Check February
     assert trend[1] == (2023, 2, 1200.0)  # 2000 - 800
+
+
+def test_get_monthly_total_expense(in_memory_repo, statistics_service):
+    """Test get_monthly_total_expense delegates correctly to the repository."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-200.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 15),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    # Income should be excluded
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 20),
+            amount=3000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    total = statistics_service.get_monthly_total_expense(2023, 1)
+
+    assert total == 300.0
+
+
+def test_get_monthly_transaction_count(in_memory_repo, statistics_service):
+    """Test get_monthly_transaction_count delegates correctly to the repository."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-200.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 15),
+            amount=3000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    count = statistics_service.get_monthly_transaction_count(2023, 1)
+
+    assert count == 2
+
+
+def test_monthly_metrics_includes_new_fields(in_memory_repo, statistics_service):
+    """Test that get_monthly_metrics returns all new fields populated correctly."""
+    # Add expenses for January 2023
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-200.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 15),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 20),
+            amount=3000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    # Add expenses for December 2022 (previous month)
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2022, 12, 10),
+            amount=-250.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+
+    metrics = statistics_service.get_monthly_metrics(2023, 1)
+
+    assert metrics.total_expenses == 300.0  # 200 + 100
+    assert metrics.transaction_count == 3
+    assert metrics.avg_transaction == 100.0  # 300 / 3
+    assert metrics.prev_month_expenses == 250.0
+    assert metrics.month_over_month_pct == pytest.approx(20.0)  # (300-250)/250*100
+
+
+def test_month_over_month_no_previous_data(statistics_service, in_memory_repo):
+    """Test that month_over_month_pct is None when no previous month data exists."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-200.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    metrics = statistics_service.get_monthly_metrics(2023, 1)
+
+    assert metrics.total_expenses == 200.0
+    assert metrics.prev_month_expenses == 0.0
+    assert metrics.month_over_month_pct is None

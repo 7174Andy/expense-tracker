@@ -381,4 +381,34 @@ class TransactionRepository:
         )
         return row.fetchone() is not None
 
+    def get_total_expense(self, start_date: date, end_date: date) -> float:
+        """
+        Get total expenses for a given month.
+        Only sums negative amounts (expenses).
+        """
+        row = self.conn.execute(
+            """
+            SELECT SUM(ABS(amount)) as total_expense
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = row.fetchone()
+        return result["total_expense"] if result["total_expense"] is not None else 0.0
 
+    def get_transaction_count(self, start_date: date, end_date: date) -> int:
+        """
+        Get total number of transactions for a given month.
+        """
+        row = self.conn.execute(
+            """
+            SELECT COUNT(*) as transaction_count
+            FROM transactions
+            WHERE date >= ? AND date < ?
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = row.fetchone()
+        return result["transaction_count"] if result["transaction_count"] is not None else 0

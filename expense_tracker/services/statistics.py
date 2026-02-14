@@ -14,6 +14,11 @@ class MonthlyMetrics(NamedTuple):
     net_income: float
     top_category: str | None
     top_category_spending: float | None
+    total_expenses: float
+    transaction_count: int
+    avg_transaction: float
+    prev_month_expenses: float
+    month_over_month_pct: float | None
 
 
 class StatisticsService:
@@ -40,7 +45,7 @@ class StatisticsService:
         Get comprehensive monthly metrics by combining multiple repository queries.
 
         Returns:
-            MonthlyMetrics with net income and top spending category
+            MonthlyMetrics with net income, top spending category, and additional stats
         """
         start_date, end_date = self._get_month_date_range(year, month)
         net_income = self.transaction_repo.get_monthly_net_income(start_date, end_date)
@@ -51,12 +56,33 @@ class StatisticsService:
         else:
             top_category, top_spending = None, None
 
+        total_expenses = self.get_monthly_total_expense(year, month)
+        transaction_count = self.get_monthly_transaction_count(year, month)
+        avg_transaction = total_expenses / transaction_count if transaction_count > 0 else 0.0
+
+        # Previous month calculations
+        if month == 1:
+            prev_year, prev_month = year - 1, 12
+        else:
+            prev_year, prev_month = year, month - 1
+        prev_month_expenses = self.get_monthly_total_expense(prev_year, prev_month)
+
+        if prev_month_expenses > 0:
+            month_over_month_pct = ((total_expenses - prev_month_expenses) / prev_month_expenses) * 100
+        else:
+            month_over_month_pct = None
+
         return MonthlyMetrics(
             year=year,
             month=month,
             net_income=net_income,
             top_category=top_category,
-            top_category_spending=top_spending
+            top_category_spending=top_spending,
+            total_expenses=total_expenses,
+            transaction_count=transaction_count,
+            avg_transaction=avg_transaction,
+            prev_month_expenses=prev_month_expenses,
+            month_over_month_pct=month_over_month_pct,
         )
 
     def get_spending_heatmap_data(self, year: int, month: int) -> dict[int, float]:
@@ -122,3 +148,23 @@ class StatisticsService:
             List of years (e.g. [2024, 2023])
         """
         return self.transaction_repo.get_years_with_expenses()
+
+    def get_monthly_total_expense(self, year: int, month: int) -> float:
+        """
+        Get total expenses for a given month.
+
+        Returns:
+            Total expense amount (positive value)
+        """
+        start_date, end_date = self._get_month_date_range(year, month)
+        return self.transaction_repo.get_total_expense(start_date, end_date)
+    
+    def get_monthly_transaction_count(self, year: int, month: int) -> int:
+        """
+        Get total number of transactions for a given month.
+
+        Returns:
+            Total transaction count
+        """
+        start_date, end_date = self._get_month_date_range(year, month)
+        return self.transaction_repo.get_transaction_count(start_date, end_date)

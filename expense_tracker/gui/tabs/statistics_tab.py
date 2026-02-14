@@ -48,54 +48,53 @@ class StatisticsTab(tk.Frame):
         self._update_header_label()
 
     def _build_metrics_cards(self):
-        """Build card-based layout for displaying metrics."""
+        """Build card-based layout for displaying metrics (2x3 grid)."""
         # Container for metrics cards
         cards_container = tk.Frame(self)
         cards_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
-        # Configure grid to center cards
-        cards_container.grid_columnconfigure(0, weight=1)
-        cards_container.grid_columnconfigure(1, weight=1)
-        cards_container.grid_rowconfigure(0, weight=1)
+        # Configure 2x3 grid
+        for col in range(3):
+            cards_container.grid_columnconfigure(col, weight=1)
+        for row in range(2):
+            cards_container.grid_rowconfigure(row, weight=1)
 
-        # Net Income Card
+        # Row 0, Col 0: Net Income Card
         net_income_card = tk.Frame(
             cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
         )
         net_income_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        net_income_title = tk.Label(
+        tk.Label(
             net_income_card,
             text="Monthly Net Income",
             font=("Arial", 14, "bold"),
             bg="#2b2b2b",
             fg="#ffffff",
-        )
-        net_income_title.pack(pady=(20, 10))
+        ).pack(pady=(20, 10))
 
         self.net_income_label = tk.Label(
             net_income_card,
             text="$0.00",
-            font=("Arial", 32, "bold"),
+            font=("Arial", 28, "bold"),
             bg="#2b2b2b",
             fg="#ffffff",
         )
         self.net_income_label.pack(pady=(10, 20))
 
-        # Top Spending Category Card
+        # Row 0, Col 1: Top Spending Category Card
         top_category_card = tk.Frame(
             cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
         )
         top_category_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        top_category_title = tk.Label(
+        tk.Label(
             top_category_card,
             text="Top Spending Category",
             font=("Arial", 14, "bold"),
             bg="#2b2b2b",
             fg="#ffffff",
-        )
-        top_category_title.pack(pady=(20, 10))
+        ).pack(pady=(20, 10))
 
         self.top_category_name_label = tk.Label(
             top_category_card,
@@ -114,6 +113,98 @@ class StatisticsTab(tk.Frame):
             fg="#aaaaaa",
         )
         self.top_category_amount_label.pack(pady=(5, 20))
+
+        # Row 0, Col 2: Total Expenses Card
+        total_expenses_card = tk.Frame(
+            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        total_expenses_card.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+        tk.Label(
+            total_expenses_card,
+            text="Total Expenses",
+            font=("Arial", 14, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        ).pack(pady=(20, 10))
+
+        self.total_expenses_label = tk.Label(
+            total_expenses_card,
+            text="$0.00",
+            font=("Arial", 28, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        )
+        self.total_expenses_label.pack(pady=(10, 20))
+
+        # Row 1, Col 0: Transaction Count Card
+        txn_count_card = tk.Frame(
+            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        txn_count_card.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+        tk.Label(
+            txn_count_card,
+            text="Transactions",
+            font=("Arial", 14, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        ).pack(pady=(20, 10))
+
+        self.txn_count_label = tk.Label(
+            txn_count_card,
+            text="0",
+            font=("Arial", 28, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        )
+        self.txn_count_label.pack(pady=(10, 20))
+
+        # Row 1, Col 1: Average Transaction Card
+        avg_txn_card = tk.Frame(
+            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        avg_txn_card.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+
+        tk.Label(
+            avg_txn_card,
+            text="Avg Transaction",
+            font=("Arial", 14, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        ).pack(pady=(20, 10))
+
+        self.avg_txn_label = tk.Label(
+            avg_txn_card,
+            text="$0.00",
+            font=("Arial", 28, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        )
+        self.avg_txn_label.pack(pady=(10, 20))
+
+        # Row 1, Col 2: Month-over-Month Card
+        mom_card = tk.Frame(
+            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        mom_card.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
+
+        tk.Label(
+            mom_card,
+            text="vs. Last Month",
+            font=("Arial", 14, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        ).pack(pady=(20, 10))
+
+        self.mom_label = tk.Label(
+            mom_card,
+            text="N/A",
+            font=("Arial", 28, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        )
+        self.mom_label.pack(pady=(10, 20))
 
     def _update_header_label(self):
         """Update the month/year label and button states."""
@@ -191,15 +282,35 @@ class StatisticsTab(tk.Frame):
         self.net_income_label.config(text=formatted_income, fg=color)
 
         # Display top spending category
-        top_category = (metrics.top_category, metrics.top_category_spending) if metrics.top_category else None
-
-        if top_category is None:
+        if metrics.top_category is None:
             self.top_category_name_label.config(text="N/A")
             self.top_category_amount_label.config(text="$0.00")
         else:
-            category_name, amount = top_category
-            self.top_category_name_label.config(text=category_name)
-            self.top_category_amount_label.config(text=f"${amount:,.2f}")
+            self.top_category_name_label.config(text=metrics.top_category)
+            self.top_category_amount_label.config(
+                text=f"${metrics.top_category_spending:,.2f}"
+            )
+
+        # Total Expenses
+        self.total_expenses_label.config(text=f"${metrics.total_expenses:,.2f}")
+
+        # Transaction Count
+        self.txn_count_label.config(text=str(metrics.transaction_count))
+
+        # Average Transaction
+        self.avg_txn_label.config(text=f"${metrics.avg_transaction:,.2f}")
+
+        # Month-over-Month
+        if metrics.month_over_month_pct is None:
+            self.mom_label.config(text="N/A", fg="#ffffff")
+        else:
+            pct = metrics.month_over_month_pct
+            if pct > 0:
+                self.mom_label.config(text=f"+{pct:.1f}%", fg="#ff4444")  # Red: spending increased
+            elif pct < 0:
+                self.mom_label.config(text=f"{pct:.1f}%", fg="#44ff44")  # Green: spending decreased
+            else:
+                self.mom_label.config(text="0.0%", fg="#ffffff")
 
     def refresh(self):
         """Refresh statistics when tab becomes active."""

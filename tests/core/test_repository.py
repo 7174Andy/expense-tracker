@@ -1368,3 +1368,89 @@ def test_transaction_exists_different_description(in_memory_repo):
             description="Restaurant",
         )
     )
+
+
+def test_get_total_expense(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses and income for January 2023
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    # Income should be excluded
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    total = repo.get_total_expense(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Only negative amounts summed as absolute values: 50 + 100 = 150
+    assert total == 150.0
+
+
+def test_get_total_expense_no_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    total = repo.get_total_expense(date(2023, 1, 1), date(2023, 2, 1))
+    assert total == 0.0
+
+
+def test_get_transaction_count(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    count = repo.get_transaction_count(date(2023, 1, 1), date(2023, 2, 1))
+
+    # All transactions counted (including income)
+    assert count == 3
+
+
+def test_get_transaction_count_no_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    count = repo.get_transaction_count(date(2023, 1, 1), date(2023, 2, 1))
+    assert count == 0
