@@ -149,6 +149,16 @@ class StatisticsService:
         """
         return self.transaction_repo.get_years_with_expenses()
 
+    def get_monthly_category_breakdown(self, year: int, month: int) -> list[tuple[str, float]]:
+        """
+        Get spending by category for a given month, sorted descending by amount.
+
+        Returns:
+            List of (category, total_spending) tuples
+        """
+        start_date, end_date = self._get_month_date_range(year, month)
+        return self.transaction_repo.get_spending_by_category(start_date, end_date)
+
     def get_monthly_total_expense(self, year: int, month: int) -> float:
         """
         Get total expenses for a given month.

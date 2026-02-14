@@ -1,4 +1,5 @@
 import calendar
+import platform
 import tkinter as tk
 from tkinter import ttk
 
@@ -20,13 +21,77 @@ class StatisticsTab(tk.Frame):
 
         self.pack(fill=tk.BOTH, expand=True)
 
-        # Build UI
+        # Color palette for bar chart
+        self._bar_colors = [
+            "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+            "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+        ]
+
+        # Build scrollable container
+        self._build_scroll_container()
+
+        # Build UI inside scrollable content
         self._build_header()
         self._build_metrics_cards()
+        self._build_category_chart()
+
+    def _build_scroll_container(self):
+        """Build a scrollable container for all page content."""
+        self._scroll_canvas = tk.Canvas(self, highlightthickness=0)
+        self._scrollbar = ttk.Scrollbar(
+            self, orient=tk.VERTICAL, command=self._scroll_canvas.yview
+        )
+        self._scroll_canvas.configure(yscrollcommand=self._scrollbar.set)
+
+        self._scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Inner frame that holds all content
+        self._content_frame = tk.Frame(self._scroll_canvas)
+        self._canvas_window = self._scroll_canvas.create_window(
+            (0, 0), window=self._content_frame, anchor="nw"
+        )
+
+        # Update scroll region when content changes size
+        self._content_frame.bind(
+            "<Configure>",
+            lambda e: self._scroll_canvas.configure(
+                scrollregion=self._scroll_canvas.bbox("all")
+            ),
+        )
+
+        # Make content frame match canvas width
+        self._scroll_canvas.bind(
+            "<Configure>",
+            self._on_canvas_configure,
+        )
+
+        # Bind mousewheel scrolling
+        self._scroll_canvas.bind("<Enter>", self._bind_mousewheel)
+        self._scroll_canvas.bind("<Leave>", self._unbind_mousewheel)
+
+    def _on_canvas_configure(self, event):
+        """Keep content frame width in sync with canvas width."""
+        self._scroll_canvas.itemconfig(self._canvas_window, width=event.width)
+        # Redraw chart when width changes
+        self._draw_category_chart()
+
+    def _bind_mousewheel(self, event):
+        self._scroll_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, event):
+        self._scroll_canvas.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        if platform.system() == "Darwin":
+            delta = -event.delta
+        else:
+            delta = -1 * (event.delta // 120)
+        self._scroll_canvas.yview_scroll(delta, "units")
 
     def _build_header(self):
         """Build header with month navigation controls."""
-        header = tk.Frame(self)
+        header = tk.Frame(self._content_frame)
         header.pack(fill=tk.X, padx=20, pady=15)
 
         # Previous month button
@@ -50,8 +115,8 @@ class StatisticsTab(tk.Frame):
     def _build_metrics_cards(self):
         """Build card-based layout for displaying metrics (2x3 grid)."""
         # Container for metrics cards
-        cards_container = tk.Frame(self)
-        cards_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        cards_container = tk.Frame(self._content_frame)
+        cards_container.pack(fill=tk.X, padx=20, pady=10)
 
         # Configure 2x3 grid
         for col in range(3):
@@ -206,6 +271,102 @@ class StatisticsTab(tk.Frame):
         )
         self.mom_label.pack(pady=(10, 20))
 
+    def _build_category_chart(self):
+        """Build the category spending bar chart section below cards."""
+        # Section title
+        tk.Label(
+            self._content_frame,
+            text="Spending by Category",
+            font=("Arial", 16, "bold"),
+            fg="#ffffff",
+            anchor="w",
+        ).pack(fill=tk.X, padx=20, pady=(10, 5))
+
+        # Chart container
+        chart_frame = tk.Frame(
+            self._content_frame, bg="#2b2b2b", relief=tk.RIDGE, borderwidth=2
+        )
+        chart_frame.pack(fill=tk.X, padx=20, pady=(0, 15))
+
+        self.chart_canvas = tk.Canvas(chart_frame, bg="#2b2b2b", highlightthickness=0)
+        self.chart_canvas.pack(fill=tk.X)
+
+    def _draw_category_chart(self):
+        """Draw horizontal bar chart of spending by category."""
+        self.chart_canvas.delete("all")
+
+        canvas_width = self._scroll_canvas.winfo_width() - 44  # account for padding + scrollbar
+
+        if canvas_width <= 1:
+            return
+
+        breakdown = self.statistics_service.get_monthly_category_breakdown(
+            self._current_year, self._current_month
+        )
+
+        label_margin = 150
+        right_margin = 80
+        top_margin = 15
+        bottom_margin = 15
+        bar_height = 28
+        bar_gap = 8
+
+        if not breakdown:
+            empty_height = 80
+            self.chart_canvas.config(width=canvas_width, height=empty_height)
+            self.chart_canvas.create_text(
+                canvas_width / 2,
+                empty_height / 2,
+                text="No expenses this month",
+                fill="#aaaaaa",
+                font=("Arial", 14),
+            )
+            return
+
+        total_chart_height = (
+            len(breakdown) * (bar_height + bar_gap) - bar_gap + top_margin + bottom_margin
+        )
+        self.chart_canvas.config(width=canvas_width, height=total_chart_height)
+
+        max_amount = breakdown[0][1]
+        available_width = canvas_width - label_margin - right_margin
+
+        for i, (category, amount) in enumerate(breakdown):
+            y = top_margin + i * (bar_height + bar_gap)
+            color = self._bar_colors[i % len(self._bar_colors)]
+
+            # Category label (right-aligned)
+            self.chart_canvas.create_text(
+                label_margin - 10,
+                y + bar_height / 2,
+                text=category,
+                fill="#ffffff",
+                font=("Arial", 11),
+                anchor="e",
+            )
+
+            # Bar
+            bar_width = (amount / max_amount) * available_width if max_amount > 0 else 0
+            bar_width = max(bar_width, 2)  # Minimum visible bar
+            self.chart_canvas.create_rectangle(
+                label_margin,
+                y,
+                label_margin + bar_width,
+                y + bar_height,
+                fill=color,
+                outline="",
+            )
+
+            # Amount label
+            self.chart_canvas.create_text(
+                label_margin + bar_width + 8,
+                y + bar_height / 2,
+                text=f"${amount:,.2f}",
+                fill="#ffffff",
+                font=("Arial", 11),
+                anchor="w",
+            )
+
     def _update_header_label(self):
         """Update the month/year label and button states."""
         month_name = calendar.month_name[self._current_month]
@@ -311,6 +472,8 @@ class StatisticsTab(tk.Frame):
                 self.mom_label.config(text=f"{pct:.1f}%", fg="#44ff44")  # Green: spending decreased
             else:
                 self.mom_label.config(text="0.0%", fg="#ffffff")
+
+        self._draw_category_chart()
 
     def refresh(self):
         """Refresh statistics when tab becomes active."""

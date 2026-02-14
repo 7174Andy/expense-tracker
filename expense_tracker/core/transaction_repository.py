@@ -381,6 +381,24 @@ class TransactionRepository:
         )
         return row.fetchone() is not None
 
+    def get_spending_by_category(self, start_date: date, end_date: date) -> list[tuple[str, float]]:
+        """
+        Returns all categories with their total spending, sorted descending by amount.
+        Only includes expenses (negative amounts).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT category, SUM(ABS(amount)) as total
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            GROUP BY category
+            ORDER BY total DESC
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        return [(row["category"], row["total"]) for row in rows.fetchall()]
+
     def get_total_expense(self, start_date: date, end_date: date) -> float:
         """
         Get total expenses for a given month.
