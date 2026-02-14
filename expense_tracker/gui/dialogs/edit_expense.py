@@ -6,6 +6,7 @@ from expense_tracker.core.transaction_repository import TransactionRepository
 from expense_tracker.core.merchant_repository import MerchantCategoryRepository
 from expense_tracker.services.merchant import MerchantCategoryService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
+from expense_tracker.gui.dialogs.expense_form import build_expense_form, validate_amount
 
 logger = logging.getLogger(__name__)
 
@@ -40,40 +41,18 @@ class EditExpenseDialog(tk.Toplevel):
 
         self.prev_data = None
 
-        self._build_form()
-        self._load_transaction_data()
-
-    def _build_form(self):
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", padx=10, pady=10)
-
-        # Amount
-        ttk.Label(frame, text="Amount (e.g. 12.50):").grid(row=0, column=0, sticky="w")
-        amount = ttk.Entry(frame, textvariable=self.amount_var, width=20)
-        amount.grid(row=1, column=0, sticky="w")
-
-        # Category
-        ttk.Label(frame, text="Category:").grid(row=2, column=0, sticky="w")
-        category = ttk.Entry(frame, textvariable=self.category_var, width=20)
-        category.grid(row=3, column=0, sticky="w")
-
-        # Description
-        ttk.Label(frame, text="Description:").grid(row=4, column=0, sticky="w")
-        description = ttk.Entry(frame, textvariable=self.description_var, width=20)
-        description.grid(row=5, column=0, sticky="w")
-
-        # Buttons
-        button_frame = ttk.Frame(frame)
-        button_frame.grid(row=6, column=0, pady=10, sticky="e")
-        ttk.Button(button_frame, text="Save", command=self._on_save).pack(
-            side="right", padx=5
+        build_expense_form(
+            self,
+            self.amount_var,
+            self.category_var,
+            self.description_var,
+            submit_text="Save",
+            on_submit=self._on_save,
+            on_cancel=self._on_cancel,
         )
-        ttk.Button(button_frame, text="Cancel", command=self._on_cancel).pack(
-            side="right"
-        )
-
-        # Keyboard bindings
         self.bind("<Escape>", lambda e: self._on_cancel())
+
+        self._load_transaction_data()
 
     def _load_transaction_data(self):
         self.prev_data = self.repo.get_transaction(self.transaction_id)
@@ -91,15 +70,8 @@ class EditExpenseDialog(tk.Toplevel):
                     self.category_var.set(suggested_category.category)
 
     def _on_save(self):
-        raw = self.amount_var.get()
-        if not raw:
-            messagebox.showerror("Error", "Amount is required.")
-            return
-
-        try:
-            amount = float(raw)
-        except ValueError:
-            messagebox.showerror("Error", "Amount must be a valid number.")
+        amount = validate_amount(self.amount_var)
+        if amount is None:
             return
 
         try:
