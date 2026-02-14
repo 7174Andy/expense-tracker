@@ -1,30 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime, date
 
 from expense_tracker.core.models import Transaction
-from expense_tracker.core.transaction_repository import TransactionRepository
-from expense_tracker.core.merchant_repository import MerchantCategoryRepository
+from expense_tracker.services.transaction import TransactionService
 from expense_tracker.utils.extract import parse_bofa_statement_pdf
-from expense_tracker.services.merchant import MerchantCategoryService
-from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 
 class UploadDialog(tk.Toplevel):
-    def __init__(
-        self,
-        master,
-        repo: TransactionRepository,
-        merchant_repo: MerchantCategoryRepository,
-    ):
+    def __init__(self, master, transaction_service: TransactionService):
         super().__init__(master)
-        self.repo = repo
-        self.merchant_repo = merchant_repo
+        self.transaction_service = transaction_service
         self.title("Upload Bank Statement")
         self.resizable(False, False)
-        self.merchant_service = MerchantCategoryService(
-            merchant_repo, repo, normalize_merchant
-        )
 
         self.file_var = tk.StringVar()
 
@@ -66,22 +53,22 @@ class UploadDialog(tk.Toplevel):
             return
 
         try:
-            transactions = parse_bofa_statement_pdf(file_path)
-            for t in transactions:
-                transaction = Transaction(
+            raw_transactions = parse_bofa_statement_pdf(file_path)
+            transactions = [
+                Transaction(
                     id=None,
-                    date=self._parse_date(t["date"]),
+                    date=t["date"],
                     amount=t["amount"],
                     category="Uncategorized",
                     description=t["description"],
                 )
-                transaction.category = self.merchant_service.categorize_merchant(
-                    transaction.description, transaction.amount
-                )
-                if self.repo.transaction_exists(transaction):
-                    continue  # Skip duplicates
-                self.repo.add_transaction(transaction)
-            messagebox.showinfo("Success", "Bank statement uploaded successfully.")
+                for t in raw_transactions
+            ]
+            imported = self.transaction_service.import_transactions(transactions)
+            messagebox.showinfo(
+                "Success",
+                f"Imported {imported} transaction(s) from bank statement.",
+            )
             self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to upload bank statement: {e}")
@@ -89,13 +76,3 @@ class UploadDialog(tk.Toplevel):
     def _on_cancel(self):
         self.file_var.set("")
         self.destroy()
-
-    def _parse_date(self, raw_date) -> date:
-        if isinstance(raw_date, date):
-            return raw_date
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
-            try:
-                return datetime.strptime(raw_date, fmt).date()
-            except (ValueError, TypeError):
-                continue
-        raise ValueError(f"Unsupported date format: {raw_date}")

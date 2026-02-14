@@ -6,10 +6,12 @@ from expense_tracker.gui.tabs import TransactionsTab, HeatmapTab, StatisticsTab
 
 
 class MainWindow(tk.Frame):
-    def __init__(self, master, transaction_repo, merchant_repo, statistics_service):
+    def __init__(
+        self, master, transaction_repo, transaction_service, statistics_service
+    ):
         super().__init__(master)
         self.transaction_repo = transaction_repo
-        self.merchant_repo = merchant_repo
+        self.transaction_service = transaction_service
         self.statistics_service = statistics_service
         self.master = master
         self._active_dialog: tk.Toplevel | None = None
@@ -22,7 +24,7 @@ class MainWindow(tk.Frame):
 
         # Create Transactions tab
         self.transactions_tab = TransactionsTab(
-            self.notebook, transaction_repo, merchant_repo, self
+            self.notebook, transaction_repo, transaction_service, self
         )
 
         # Create Statistics tab

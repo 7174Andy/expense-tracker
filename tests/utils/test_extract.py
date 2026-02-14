@@ -1,19 +1,11 @@
+from datetime import date
+
 from expense_tracker.utils.extract import (
-    _parse_date,
     _parse_amount,
     parse_bofa_page,
     parse_bofa_statement_pdf,
 )
 from unittest.mock import patch, Mock
-
-
-def test_parse_date():
-    assert _parse_date("11/08/23") == "2023-11-08"
-    assert _parse_date("01/01/2024") == "2024-01-01"
-    assert (
-        _parse_date("invalid-date") == "invalid-date"
-    )  # Should return original string if parsing fails
-
 
 def test_parse_amount():
     assert _parse_amount("100.00") == 100.0
@@ -60,12 +52,12 @@ def test_parse_bofa_page():
 
     assert len(result) == 2
     assert result[0] == {
-        "date": "2024-01-15",
+        "date": date(2024, 1, 15),
         "description": "Some Transaction",
         "amount": 123.45,
     }
     assert result[1] == {
-        "date": "2024-01-16",
+        "date": date(2024, 1, 16),
         "description": "Another One",
         "amount": -50.00,
     }

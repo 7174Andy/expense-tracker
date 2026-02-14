@@ -234,28 +234,6 @@ class TransactionRepository:
         result = row.fetchone()
         return result["net_income"] if result["net_income"] is not None else 0.0
 
-    def get_top_spending_category(self, start_date: date, end_date: date) -> tuple[str, float] | None:
-        """
-        Returns the category with the highest spending (sum of negative amounts) for a specific month.
-        Returns tuple of (category_name, total_spending) or None if no expenses exist.
-        """
-        rows = self.conn.execute(
-            """
-            SELECT category, SUM(ABS(amount)) as total
-            FROM transactions
-            WHERE date >= ? AND date < ?
-              AND amount < 0
-            GROUP BY category
-            ORDER BY total DESC
-            LIMIT 1
-            """,
-            (start_date.isoformat(), end_date.isoformat()),
-        )
-        result = rows.fetchone()
-        if result is None:
-            return None
-        return (result["category"], result["total"])
-
     def get_transactions_for_date(self, target_date: date) -> list[Transaction]:
         """
         Query transactions matching exact date.
@@ -298,7 +276,7 @@ class TransactionRepository:
         return (result["year"], result["month"])
     
 
-    def get_all_months_with_data(self) -> list[tuple[int, int]]:
+    def get_all_months_with_data(self) -> set[tuple[int, int]]:
         """
         Returns a list of (year, month) tuples for all months that have transaction data.
         Ordered by year and month descending (most recent first).
