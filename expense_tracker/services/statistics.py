@@ -104,3 +104,21 @@ class StatisticsService:
             List of (year, month, net_amount) tuples
         """
         return self.transaction_repo.get_monthly_cashflow_trend(num_months)
+
+    def get_yearly_heatmap_data(self, year: int) -> dict[str, float]:
+        """
+        Get daily spending data for a full year, formatted for heatmap visualization.
+
+        Returns:
+            Dictionary mapping ISO date string to spending amount
+        """
+        return self.transaction_repo.get_daily_spending_for_year(year)
+
+    def get_available_years(self) -> list[int]:
+        """
+        Get list of years with expense data, sorted descending.
+
+        Returns:
+            List of years (e.g. [2024, 2023])
+        """
+        return self.transaction_repo.get_years_with_expenses()
