@@ -1,6 +1,7 @@
 import pdfplumber
 import re
-from datetime import datetime
+
+from expense_tracker.utils.date import parse_date_from_str
 
 DATE_RX = re.compile(r"^\d{2}/\d{2}/\d{2}$")
 AMOUNT_RX = re.compile(
@@ -45,21 +46,12 @@ def parse_bofa_page(page):
             continue
         rows.append(
             {
-                "date": _parse_date(tokens[0]),
+                "date": parse_date_from_str(tokens[0]),
                 "description": desc,
                 "amount": _parse_amount(tokens[amt_idx]),
             }
         )
     return rows
-
-
-def _parse_date(s):
-    for fmt in ("%m/%d/%y", "%m/%d/%Y"):
-        try:
-            return datetime.strptime(s, fmt).date().isoformat()
-        except Exception:
-            pass
-    return s
 
 
 def _parse_amount(s: str) -> float:

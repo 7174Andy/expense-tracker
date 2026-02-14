@@ -49,7 +49,8 @@ class StatisticsService:
         """
         start_date, end_date = self._get_month_date_range(year, month)
         net_income = self.transaction_repo.get_monthly_net_income(start_date, end_date)
-        top_category_data = self.transaction_repo.get_top_spending_category(start_date, end_date)
+        top_category_data = self.transaction_repo.get_spending_by_category(start_date, end_date)
+        top_category_data = top_category_data[0] if top_category_data else None
 
         if top_category_data:
             top_category, top_spending = top_category_data
