@@ -48,3 +48,24 @@ def mock_repo() -> MagicMock:
     repo.get_category.side_effect = get_category
     repo.get_all_merchants.return_value = list(merchants.values())
     return repo
+
+
+# Edge case tests for normalize_merchant
+@pytest.mark.parametrize(
+    "input_str, expected_str",
+    [
+        ("", ""),
+        ("   ", ""),
+        ("###***", ""),
+        ("12345", ""),
+        ("café résumé", "CAFÉ RÉSUMÉ"),
+        ("über eats delivery", "ÜBER EATS DELIVERY"),
+        (
+            "A" * 200,
+            "A" * 200,
+        ),
+    ],
+)
+def test_normalize_merchant_edge_cases(input_str, expected_str):
+    """Test normalize_merchant with edge-case inputs."""
+    assert normalize_merchant(input_str) == expected_str
