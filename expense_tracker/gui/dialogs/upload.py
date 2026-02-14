@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from datetime import datetime, date
 
 from expense_tracker.core.models import Transaction
 from expense_tracker.services.transaction import TransactionService
@@ -58,7 +57,7 @@ class UploadDialog(tk.Toplevel):
             transactions = [
                 Transaction(
                     id=None,
-                    date=self._parse_date(t["date"]),
+                    date=t["date"],
                     amount=t["amount"],
                     category="Uncategorized",
                     description=t["description"],
@@ -77,13 +76,3 @@ class UploadDialog(tk.Toplevel):
     def _on_cancel(self):
         self.file_var.set("")
         self.destroy()
-
-    def _parse_date(self, raw_date) -> date:
-        if isinstance(raw_date, date):
-            return raw_date
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
-            try:
-                return datetime.strptime(raw_date, fmt).date()
-            except (ValueError, TypeError):
-                continue
-        raise ValueError(f"Unsupported date format: {raw_date}")
