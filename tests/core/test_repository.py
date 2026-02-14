@@ -1239,6 +1239,114 @@ def test_transaction_exists_different_amount(in_memory_repo):
     )
 
 
+def test_get_daily_spending_for_year_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses across different days in 2023
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-30.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-06-20"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    # Income should be excluded
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-01"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    # Different year should be excluded
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2024-01-15"),
+            amount=-75.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+
+    spending = repo.get_daily_spending_for_year(2023)
+
+    assert len(spending) == 2
+    assert spending["2023-01-15"] == 80.0  # 50 + 30 aggregated
+    assert spending["2023-06-20"] == 100.0
+    assert "2023-03-01" not in spending  # Income excluded
+    assert "2024-01-15" not in spending  # Different year excluded
+
+
+def test_get_daily_spending_for_year_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    spending = repo.get_daily_spending_for_year(2023)
+    assert spending == {}
+
+
+def test_get_years_with_expenses(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-05-10"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2024-02-15"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    # Income-only year should be excluded
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2022-01-01"),
+            amount=3000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    years = repo.get_years_with_expenses()
+
+    assert years == [2024, 2023]  # Descending, income-only year excluded
+
+
+def test_get_years_with_expenses_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    years = repo.get_years_with_expenses()
+    assert years == []
+
+
 def test_transaction_exists_different_description(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     repo.add_transaction(

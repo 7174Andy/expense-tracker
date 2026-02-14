@@ -255,6 +255,66 @@ def test_get_latest_available_month_empty(statistics_service):
     assert month == today.month
 
 
+def test_get_yearly_heatmap_data(in_memory_repo, statistics_service):
+    """Test get_yearly_heatmap_data returns daily spending keyed by ISO date."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 3, 15),
+            amount=-75.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 3, 15),
+            amount=-25.0,
+            category="Transport",
+            description="Taxi",
+        )
+    )
+
+    data = statistics_service.get_yearly_heatmap_data(2023)
+
+    assert isinstance(data, dict)
+    assert data["2023-03-15"] == 100.0  # 75 + 25
+    assert "2023-03-16" not in data
+
+
+def test_get_available_years(in_memory_repo, statistics_service):
+    """Test get_available_years returns years with expenses descending."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2024, 6, 10),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+
+    years = statistics_service.get_available_years()
+
+    assert years == [2024, 2023]
+
+
+def test_get_available_years_empty(statistics_service):
+    """Test get_available_years with no data returns empty list."""
+    years = statistics_service.get_available_years()
+    assert years == []
+
+
 def test_get_cashflow_trend(in_memory_repo, statistics_service):
     """Test get_cashflow_trend returns monthly net amounts."""
     # Add transactions for multiple months

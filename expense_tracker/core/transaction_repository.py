@@ -335,6 +335,43 @@ class TransactionRepository:
             result.append((row["year"], row["month"]))
         return result
     
+    def get_daily_spending_for_year(self, year: int) -> dict[str, float]:
+        """
+        Returns spending keyed by ISO date string for the given year.
+        Only includes expenses (negative amounts).
+        """
+        start = date(year, 1, 1).isoformat()
+        end = date(year + 1, 1, 1).isoformat()
+        rows = self.conn.execute(
+            """
+            SELECT date, SUM(ABS(amount)) as total
+            FROM transactions
+            WHERE date >= ? AND date < ?
+              AND amount < 0
+            GROUP BY date
+            """,
+            (start, end),
+        )
+        result: dict[str, float] = {}
+        for row in rows.fetchall():
+            result[row["date"]] = row["total"]
+        return result
+
+    def get_years_with_expenses(self) -> list[int]:
+        """
+        Returns sorted descending list of years that have expense data.
+        Only includes years with negative amounts (expenses).
+        """
+        rows = self.conn.execute(
+            """
+            SELECT DISTINCT CAST(strftime('%Y', date) AS INTEGER) as year
+            FROM transactions
+            WHERE amount < 0
+            ORDER BY year DESC
+            """
+        )
+        return [row["year"] for row in rows.fetchall()]
+
     def transaction_exists(self, transaction: Transaction) -> bool:
         """Checks if a transaction with the same date, amount, and description already exists in the database.
         """

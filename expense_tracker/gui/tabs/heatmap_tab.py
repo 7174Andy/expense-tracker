@@ -1,9 +1,32 @@
 import calendar
 import tkinter as tk
-from datetime import date
+from datetime import date, timedelta
 from tkinter import ttk
 
 from expense_tracker.services.statistics import StatisticsService
+
+# GitHub-style green color palette (5 levels)
+COLORS = [
+    "#ebedf0",  # no spending
+    "#9be9a8",  # low
+    "#40c463",  # medium
+    "#30a14e",  # high
+    "#216e39",  # very high
+]
+
+CELL_SIZE = 14
+CELL_GAP = 3
+CELL_STRIDE = CELL_SIZE + CELL_GAP
+
+DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", "Sun"]
+MONTH_ABBREVS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
+# Layout constants
+LEFT_MARGIN = 40  # space for day-of-week labels
+TOP_MARGIN = 20   # space for month labels
 
 
 class HeatmapTab(tk.Frame):
@@ -13,103 +36,106 @@ class HeatmapTab(tk.Frame):
         self.main_window = main_window
 
         # State
-        self._months_with_expenses: list[tuple[int, int]] = []
-        self._current_index = 0
-        self._spending_data: dict[int, float] = {}
+        self._available_years: list[int] = []
+        self._current_year: int = date.today().year
+        self._spending_data: dict[str, float] = {}
+        self._cell_map: dict[tuple[int, int], date] = {}  # (col, row) -> date
 
         # Tooltip
         self._tooltip: tk.Toplevel | None = None
+        self._tooltip_cell: tuple[int, int] | None = None
 
         self.pack(fill=tk.BOTH, expand=True)
 
         # Build UI
         self._build_header()
-        self._calendar_container = tk.Frame(self)
-        self._calendar_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self._canvas_container = tk.Frame(self)
+        self._canvas_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self._canvas: tk.Canvas | None = None
 
     def _build_header(self):
-        """Build header with month navigation controls."""
+        """Build header with year navigation controls."""
         header = tk.Frame(self)
         header.pack(fill=tk.X, padx=10, pady=10)
 
-        # Previous month button
         self.prev_button = ttk.Button(
-            header, text="<", command=self._previous_month, width=3
+            header, text="<", command=self._previous_year, width=3
         )
         self.prev_button.pack(side=tk.LEFT, padx=5)
 
-        # Month/Year label
-        self.month_label = ttk.Label(header, text="", font=("Arial", 20, "bold"))
-        self.month_label.pack(side=tk.LEFT, expand=True)
+        self.year_label = ttk.Label(header, text="", font=("Arial", 20, "bold"))
+        self.year_label.pack(side=tk.LEFT, expand=True)
 
-        # Next month button
         self.next_button = ttk.Button(
-            header, text=">", command=self._next_month, width=3
+            header, text=">", command=self._next_year, width=3
         )
         self.next_button.pack(side=tk.RIGHT, padx=5)
 
-    def _update_header_label(self):
-        """Update the month/year label and button states."""
-        if not self._months_with_expenses:
-            self.month_label.config(text="No expenses found")
+    def _update_header(self):
+        """Update the year label and button states."""
+        if not self._available_years:
+            self.year_label.config(text="No expenses found")
             self.prev_button.config(state=tk.DISABLED)
             self.next_button.config(state=tk.DISABLED)
             return
 
-        year, month = self._months_with_expenses[self._current_index]
-        month_name = calendar.month_name[month]
+        self.year_label.config(text=str(self._current_year))
 
-        # Show current position
-        self.month_label.config(
-            text=f"{month_name} {year}"
+        year_idx = (
+            self._available_years.index(self._current_year)
+            if self._current_year in self._available_years
+            else -1
         )
-
-        # Update button states
         self.prev_button.config(
-            state=tk.NORMAL if self._current_index < len(self._months_with_expenses) - 1 else tk.DISABLED
+            state=tk.NORMAL
+            if year_idx < len(self._available_years) - 1
+            else tk.DISABLED
         )
         self.next_button.config(
-            state=tk.NORMAL if self._current_index > 0 else tk.DISABLED
+            state=tk.NORMAL if year_idx > 0 else tk.DISABLED
         )
 
-    def _previous_month(self):
-        """Navigate to previous month with expenses."""
-        if self._current_index < len(self._months_with_expenses) - 1:
-            self._current_index += 1
-            self._update_header_label()
-            self._build_calendar_grid()
+    def _previous_year(self):
+        """Navigate to previous year with expenses."""
+        if self._current_year not in self._available_years:
+            return
+        idx = self._available_years.index(self._current_year)
+        if idx < len(self._available_years) - 1:
+            self._current_year = self._available_years[idx + 1]
+            self._update_header()
+            self._build_heatmap()
 
-    def _next_month(self):
-        """Navigate to next month with expenses."""
-        if self._current_index > 0:
-            self._current_index -= 1
-            self._update_header_label()
-            self._build_calendar_grid()
+    def _next_year(self):
+        """Navigate to next year with expenses."""
+        if self._current_year not in self._available_years:
+            return
+        idx = self._available_years.index(self._current_year)
+        if idx > 0:
+            self._current_year = self._available_years[idx - 1]
+            self._update_header()
+            self._build_heatmap()
 
     def refresh(self):
-        """Fetch data and rebuild calendar grid."""
-        # Get all months with expenses
-        self._months_with_expenses = self.statistics_service.get_available_months(expenses_only=True)
+        """Fetch data and rebuild heatmap."""
+        self._available_years = self.statistics_service.get_available_years()
 
-        # Reset to most recent month
-        self._current_index = 0
+        if self._available_years:
+            self._current_year = self._available_years[0]
+        else:
+            self._current_year = date.today().year
 
-        # Update header
-        self._update_header_label()
+        self._update_header()
+        self._build_heatmap()
 
-        # Build calendar
-        self._build_calendar_grid()
-
-    def _build_calendar_grid(self):
-        """Build the calendar grid with spending data."""
-        # Clear existing calendar
-        for widget in self._calendar_container.winfo_children():
+    def _build_heatmap(self):
+        """Build the GitHub-style heatmap grid."""
+        # Clear existing canvas
+        for widget in self._canvas_container.winfo_children():
             widget.destroy()
 
-        if not self._months_with_expenses:
-            # Show message if no transactions
+        if not self._available_years:
             message = tk.Label(
-                self._calendar_container,
+                self._canvas_container,
                 text="No expenses found",
                 font=("Arial", 16),
                 fg="gray",
@@ -117,150 +143,261 @@ class HeatmapTab(tk.Frame):
             message.pack(pady=50)
             return
 
-        # Get current month
-        year, month = self._months_with_expenses[self._current_index]
-
-        # Fetch spending data for current month
-        self._spending_data = self.statistics_service.get_spending_heatmap_data(
-            year, month
+        # Fetch spending data
+        self._spending_data = self.statistics_service.get_yearly_heatmap_data(
+            self._current_year
         )
 
-        # Create grid frame
-        grid_frame = tk.Frame(self._calendar_container)
-        grid_frame.pack(expand=True)
+        # Calculate grid layout
+        jan1 = date(self._current_year, 1, 1)
+        dec31 = date(self._current_year, 12, 31)
+        jan1_weekday = jan1.weekday()  # 0=Mon, 6=Sun
+        self._total_days = (dec31 - jan1).days + 1
+        total_days = self._total_days
+        num_cols = (jan1_weekday + total_days - 1) // 7 + 1
 
-        # Day of week headers
-        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        for col, day_name in enumerate(day_names):
-            # Use Canvas for headers to match cell width exactly
-            header_canvas = tk.Canvas(
-                grid_frame,
-                width=90,
-                height=25,
-                highlightthickness=0,
-            )
-            header_canvas.grid(row=0, column=col, padx=2, pady=2)
-            header_canvas.create_text(
-                45, 12,
-                text=day_name,
-                font=("Arial", 15, "bold"),
-            )
+        # Build cell map
+        self._cell_map = {}
+        for day_offset in range(total_days):
+            d = jan1 + timedelta(days=day_offset)
+            col = (jan1_weekday + day_offset) // 7
+            row = d.weekday()
+            self._cell_map[(col, row)] = d
 
-        # Get calendar information
-        first_weekday, num_days = calendar.monthrange(year, month)
-
-        # Calculate color thresholds
-        spending_values = [v for v in self._spending_data.values() if v > 0]
+        # Calculate color thresholds from spending data
+        spending_values = sorted(v for v in self._spending_data.values() if v > 0)
         if spending_values:
-            spending_values.sort()
-            p25_idx = len(spending_values) // 4
-            p75_idx = (3 * len(spending_values)) // 4
-            p25 = spending_values[p25_idx] if p25_idx < len(spending_values) else 0
-            p75 = spending_values[p75_idx] if p75_idx < len(spending_values) else 0
+            n = len(spending_values)
+            self._thresholds = [
+                spending_values[n // 4],
+                spending_values[n // 2] if n > 1 else spending_values[0],
+                spending_values[(3 * n) // 4] if n > 2 else spending_values[-1],
+            ]
         else:
-            p25 = p75 = 0
+            self._thresholds = [0, 0, 0]
 
-        # Build calendar grid
-        current_day = 1
-        for week in range(6):  # Max 6 weeks
-            if current_day > num_days:
-                break
+        # Canvas dimensions
+        canvas_w = LEFT_MARGIN + num_cols * CELL_STRIDE + 10
+        canvas_h = TOP_MARGIN + 7 * CELL_STRIDE + 50  # extra for legend
 
-            for weekday in range(7):
-                row = week + 1  # +1 for header row
+        self._canvas = tk.Canvas(
+            self._canvas_container,
+            width=canvas_w,
+            height=canvas_h,
+            highlightthickness=0,
+        )
+        self._canvas.pack(anchor=tk.CENTER)
 
-                # Check if we should place a day here
-                if week == 0 and weekday < first_weekday:
-                    # Empty cell before first day of month
-                    empty_canvas = tk.Canvas(
-                        grid_frame,
-                        width=90,
-                        height=70,
-                        highlightthickness=1,
-                        highlightbackground="#CCCCCC",
-                    )
-                    empty_canvas.grid(row=row, column=weekday, padx=0, pady=2)
-                    # Draw gray background for empty cells
-                    empty_canvas.create_rectangle(
-                        0, 0, 90, 70,
-                        outline="",
-                    )
-                elif current_day <= num_days:
-                    # Create day cell using Canvas for reliable color rendering
-                    spending = self._spending_data.get(current_day, 0.0)
-                    color = self._get_color_for_spending(spending, p25, p75)
+        # Draw month labels
+        self._draw_month_labels(jan1, jan1_weekday)
 
-                    # Determine text color for readability
-                    text_color = "white" if color == "#CC0000" else "black"
+        # Draw day-of-week labels
+        for row_idx, label in enumerate(DAY_LABELS):
+            if label:
+                y = TOP_MARGIN + row_idx * CELL_STRIDE + CELL_SIZE // 2
+                self._canvas.create_text(
+                    LEFT_MARGIN - 8, y,
+                    text=label,
+                    anchor=tk.E,
+                    font=("Arial", 9),
+                    fill="white",
+                )
 
-                    # Create canvas with explicit background rectangle
-                    cell_canvas = tk.Canvas(
-                        grid_frame,
-                        width=90,
-                        height=70,
-                        highlightthickness=1,
-                        highlightbackground="#999999",
-                    )
-                    cell_canvas.grid(row=row, column=weekday, padx=0, pady=2)
+        # Draw cells
+        for (col, row), d in self._cell_map.items():
+            x = LEFT_MARGIN + col * CELL_STRIDE
+            y = TOP_MARGIN + row * CELL_STRIDE
+            spending = self._spending_data.get(d.isoformat(), 0.0)
+            color = self._get_color(spending)
 
-                    # Draw colored rectangle as background (this bypasses theme)
-                    cell_canvas.create_rectangle(
-                        0, 0, 90, 70,
-                        fill=color,
-                        outline="",
-                    )
+            self._canvas.create_rectangle(
+                x, y, x + CELL_SIZE, y + CELL_SIZE,
+                fill=color,
+                outline="",
+                tags=f"cell_{col}_{row}",
+            )
 
-                    # Draw text on top of the colored background
-                    cell_canvas.create_text(
-                        45, 20,
-                        text=str(current_day),
-                        fill=text_color,
-                        font=("Arial", 14, "bold"),
-                    )
-                    cell_canvas.create_text(
-                        45, 50,
-                        text=f"${spending:.2f}",
-                        fill=text_color,
-                        font=("Arial", 12),
-                    )
+        # Draw legend
+        self._draw_legend(canvas_w, canvas_h)
 
-                    # Bind events
-                    day_num = current_day  # Capture in closure
-                    cell_canvas.bind(
-                        "<Button-1>",
-                        lambda _e, y=year, m=month, d=day_num: self._on_day_click(y, m, d),
-                    )
-                    cell_canvas.bind(
-                        "<Enter>",
-                        lambda e, m=month, d=day_num, s=spending: self._show_tooltip(
-                            e, m, d, s
-                        ),
-                    )
-                    cell_canvas.bind("<Leave>", self._hide_tooltip)
-                    # Change cursor on hover
-                    cell_canvas.configure(cursor="hand2")
+        # Build summary cards below heatmap
+        self._build_summary_cards()
 
-                    current_day += 1
+        # Bind events
+        self._canvas.bind("<Motion>", self._on_mouse_move)
+        self._canvas.bind("<Leave>", self._on_mouse_leave)
+        self._canvas.bind("<Button-1>", self._on_click)
+        self._canvas.configure(cursor="hand2")
 
-    def _get_color_for_spending(self, spending: float, p25: float, p75: float) -> str:
-        """
-        Calculate color based on spending amount using a heatmap gradient.
-        White (no spending) -> Light red -> Medium red -> Dark red (high spending)
-        """
-        if spending == 0:
-            return "#FFFFFF"  # White (no spending)
-        elif spending < p25:
-            return "#FFCCCC"  # Light red (low spending)
-        elif spending < p75:
-            return "#FF6666"  # Medium red (moderate spending)
+    def _build_summary_cards(self):
+        """Build yearly summary cards below the heatmap."""
+        summary_frame = tk.Frame(self._canvas_container)
+        summary_frame.pack(fill=tk.X, pady=(10, 0))
+        for col in range(3):
+            summary_frame.columnconfigure(col, weight=1)
+
+        # Compute metrics
+        total_spent = sum(self._spending_data.values())
+        daily_avg = total_spent / self._total_days if self._spending_data else 0.0
+
+        if self._spending_data:
+            busiest_key = max(self._spending_data, key=self._spending_data.get)
+            busiest_date = date.fromisoformat(busiest_key)
+            busiest_amount = self._spending_data[busiest_key]
+            busiest_label = busiest_date.strftime("%b %-d")
         else:
-            return "#CC0000"  # Dark red (high spending)
+            busiest_label = None
+            busiest_amount = 0.0
 
-    def _show_tooltip(self, event, month: int, day: int, amount: float):
-        """Show tooltip with spending details."""
-        self._hide_tooltip(event)  # Hide any existing tooltip
+        # Card 1: Total Spent
+        card1 = tk.Frame(
+            summary_frame, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        card1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        tk.Label(
+            card1, text="Total Spent", font=("Arial", 14, "bold"),
+            bg="#2b2b2b", fg="#ffffff",
+        ).pack(pady=(20, 10))
+        tk.Label(
+            card1, text=f"${total_spent:,.2f}", font=("Arial", 28, "bold"),
+            bg="#2b2b2b", fg="#ffffff",
+        ).pack(pady=(10, 20))
 
-        month_name = calendar.month_name[month]
+        # Card 2: Daily Average
+        card2 = tk.Frame(
+            summary_frame, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        card2.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        tk.Label(
+            card2, text="Daily Average", font=("Arial", 14, "bold"),
+            bg="#2b2b2b", fg="#ffffff",
+        ).pack(pady=(20, 10))
+        tk.Label(
+            card2, text=f"${daily_avg:,.2f}", font=("Arial", 28, "bold"),
+            bg="#2b2b2b", fg="#ffffff",
+        ).pack(pady=(10, 20))
+
+        # Card 3: Busiest Day
+        card3 = tk.Frame(
+            summary_frame, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        card3.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+        tk.Label(
+            card3, text="Busiest Day", font=("Arial", 14, "bold"),
+            bg="#2b2b2b", fg="#ffffff",
+        ).pack(pady=(20, 10))
+        if busiest_label:
+            tk.Label(
+                card3, text=busiest_label, font=("Arial", 28, "bold"),
+                bg="#2b2b2b", fg="#ffffff",
+            ).pack(pady=(10, 0))
+            tk.Label(
+                card3, text=f"${busiest_amount:,.2f}", font=("Arial", 18),
+                bg="#2b2b2b", fg="#aaaaaa",
+            ).pack(pady=(5, 20))
+        else:
+            tk.Label(
+                card3, text="N/A", font=("Arial", 28, "bold"),
+                bg="#2b2b2b", fg="#ffffff",
+            ).pack(pady=(10, 20))
+
+    def _draw_month_labels(self, jan1: date, jan1_weekday: int):
+        """Draw month abbreviation labels along the top."""
+        for month_num in range(1, 13):
+            first_of_month = date(self._current_year, month_num, 1)
+            day_offset = (first_of_month - jan1).days
+            col = (jan1_weekday + day_offset) // 7
+            x = LEFT_MARGIN + col * CELL_STRIDE
+            self._canvas.create_text(
+                x, TOP_MARGIN - 8,
+                text=MONTH_ABBREVS[month_num - 1],
+                anchor=tk.W,
+                font=("Arial", 9),
+                fill="white",
+            )
+
+    def _draw_legend(self, canvas_w: int, canvas_h: int):
+        """Draw the Less/More legend at the bottom-right."""
+        legend_y = canvas_h - 25
+        legend_right = canvas_w - 10
+        box_size = 12
+        box_gap = 3
+        total_boxes_w = len(COLORS) * (box_size + box_gap)
+
+        # "More" label
+        self._canvas.create_text(
+            legend_right, legend_y + box_size // 2,
+            text="More",
+            anchor=tk.E,
+            font=("Arial", 9),
+            fill="white",
+        )
+
+        # Color boxes (right to left)
+        box_start_x = legend_right - 35 - total_boxes_w
+        for i, color in enumerate(COLORS):
+            x = box_start_x + i * (box_size + box_gap)
+            self._canvas.create_rectangle(
+                x, legend_y, x + box_size, legend_y + box_size,
+                fill=color,
+                outline="",
+            )
+
+        # "Less" label
+        self._canvas.create_text(
+            box_start_x - 5, legend_y + box_size // 2,
+            text="Less",
+            anchor=tk.E,
+            font=("Arial", 9),
+            fill="white",
+        )
+
+    def _get_color(self, spending: float) -> str:
+        """Get the GitHub-style green color for a spending amount."""
+        if spending <= 0:
+            return COLORS[0]
+        if spending <= self._thresholds[0]:
+            return COLORS[1]
+        if spending <= self._thresholds[1]:
+            return COLORS[2]
+        if spending <= self._thresholds[2]:
+            return COLORS[3]
+        return COLORS[4]
+
+    def _coords_to_cell(self, x: int, y: int) -> tuple[int, int] | None:
+        """Convert canvas coordinates to (col, row) grid position."""
+        col = (x - LEFT_MARGIN) // CELL_STRIDE
+        row = (y - TOP_MARGIN) // CELL_STRIDE
+
+        # Check if click is within a cell (not in gap)
+        cell_x = (x - LEFT_MARGIN) % CELL_STRIDE
+        cell_y = (y - TOP_MARGIN) % CELL_STRIDE
+        if cell_x >= CELL_SIZE or cell_y >= CELL_SIZE:
+            return None
+
+        if (col, row) in self._cell_map:
+            return (col, row)
+        return None
+
+    def _on_mouse_move(self, event):
+        """Handle mouse movement for tooltips."""
+        cell = self._coords_to_cell(event.x, event.y)
+
+        if cell == self._tooltip_cell:
+            return  # Still in same cell, no update needed
+
+        self._tooltip_cell = cell
+        self._hide_tooltip()
+
+        if cell is None:
+            return
+
+        d = self._cell_map[cell]
+        spending = self._spending_data.get(d.isoformat(), 0.0)
+
+        day_name = calendar.day_name[d.weekday()]
+        month_name = calendar.month_abbr[d.month]
+        tooltip_text = f"${spending:.2f} on {day_name}, {month_name} {d.day}, {d.year}"
 
         self._tooltip = tk.Toplevel(self)
         self._tooltip.wm_overrideredirect(True)
@@ -268,7 +405,7 @@ class HeatmapTab(tk.Frame):
 
         label = tk.Label(
             self._tooltip,
-            text=f"{month_name} {day}: ${amount:.2f}",
+            text=tooltip_text,
             background="#FFFFE0",
             relief=tk.SOLID,
             borderwidth=1,
@@ -277,16 +414,22 @@ class HeatmapTab(tk.Frame):
         )
         label.pack()
 
-    def _hide_tooltip(self, event):
+    def _on_mouse_leave(self, event):
+        """Handle mouse leaving the canvas."""
+        self._tooltip_cell = None
+        self._hide_tooltip()
+
+    def _hide_tooltip(self):
         """Hide the tooltip."""
         if self._tooltip:
             self._tooltip.destroy()
             self._tooltip = None
 
-    def _on_day_click(self, year: int, month: int, day: int):
+    def _on_click(self, event):
         """Handle click on a day cell."""
-        # Construct the full date
-        clicked_date = date(year, month, day)
+        cell = self._coords_to_cell(event.x, event.y)
+        if cell is None:
+            return
 
-        # Call main window to switch to Transactions tab with filter
+        clicked_date = self._cell_map[cell]
         self.main_window.show_transactions_for_date(clicked_date)
