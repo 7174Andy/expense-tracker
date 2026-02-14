@@ -1370,6 +1370,116 @@ def test_transaction_exists_different_description(in_memory_repo):
     )
 
 
+def test_get_spending_by_category(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expenses in different categories
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-100.0,
+            category="Groceries",
+            description="Whole Foods",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-50.0,
+            category="Groceries",
+            description="Trader Joes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-75.0,
+            category="Restaurants",
+            description="Dinner",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-20"),
+            amount=-25.0,
+            category="Transportation",
+            description="Uber",
+        )
+    )
+    # Income should be excluded
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    result = repo.get_spending_by_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    # Sorted descending by spending, income excluded
+    assert len(result) == 3
+    assert result[0] == ("Groceries", 150.0)
+    assert result[1] == ("Restaurants", 75.0)
+    assert result[2] == ("Transportation", 25.0)
+
+
+def test_get_spending_by_category_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    result = repo.get_spending_by_category(date(2023, 1, 1), date(2023, 2, 1))
+    assert result == []
+
+
+def test_get_spending_by_category_only_income(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    result = repo.get_spending_by_category(date(2023, 1, 1), date(2023, 2, 1))
+    assert result == []
+
+
+def test_get_spending_by_category_different_month_excluded(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add expense in January
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    # Add expense in February (should be excluded)
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-10"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+
+    result = repo.get_spending_by_category(date(2023, 1, 1), date(2023, 2, 1))
+
+    assert len(result) == 1
+    assert result[0] == ("Food", 50.0)
+
+
 def test_get_total_expense(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     # Add expenses and income for January 2023

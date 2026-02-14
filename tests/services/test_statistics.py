@@ -364,6 +364,77 @@ def test_get_cashflow_trend(in_memory_repo, statistics_service):
     assert trend[1] == (2023, 2, 1200.0)  # 2000 - 800
 
 
+def test_get_monthly_category_breakdown_with_data(in_memory_repo, statistics_service):
+    """Test get_monthly_category_breakdown returns correct spending by category."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-200.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 15),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 20),
+            amount=3000.0,  # Income excluded
+            category="Income",
+            description="Salary",
+        )
+    )
+
+    result = statistics_service.get_monthly_category_breakdown(2023, 1)
+
+    assert len(result) == 2
+    assert result[0] == ("Food", 200.0)
+    assert result[1] == ("Shopping", 100.0)
+
+
+def test_get_monthly_category_breakdown_empty(statistics_service):
+    """Test get_monthly_category_breakdown returns empty list when no expenses."""
+    result = statistics_service.get_monthly_category_breakdown(2023, 1)
+    assert result == []
+
+
+def test_get_monthly_category_breakdown_december(in_memory_repo, statistics_service):
+    """Test get_monthly_category_breakdown handles December (year boundary)."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 12, 15),
+            amount=-150.0,
+            category="Gifts",
+            description="Holiday shopping",
+        )
+    )
+    # January next year should be excluded
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2024, 1, 5),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    result = statistics_service.get_monthly_category_breakdown(2023, 12)
+
+    assert len(result) == 1
+    assert result[0] == ("Gifts", 150.0)
+
+
 def test_get_monthly_total_expense(in_memory_repo, statistics_service):
     """Test get_monthly_total_expense delegates correctly to the repository."""
     in_memory_repo.add_transaction(
