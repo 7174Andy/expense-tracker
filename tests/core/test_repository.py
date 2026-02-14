@@ -1454,3 +1454,221 @@ def test_get_transaction_count_no_data(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     count = repo.get_transaction_count(date(2023, 1, 1), date(2023, 2, 1))
     assert count == 0
+
+
+def test_get_all_transactions_by_category(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-10"),
+            amount=-30.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+
+    food_transactions = repo.get_all_transactions_by_category("Food")
+    assert len(food_transactions) == 2
+    assert all(t.category == "Food" for t in food_transactions)
+    # Ordered by date DESC
+    assert food_transactions[0].date > food_transactions[1].date
+
+    shopping_transactions = repo.get_all_transactions_by_category("Shopping")
+    assert len(shopping_transactions) == 1
+    assert shopping_transactions[0].description == "Clothes"
+
+
+def test_get_all_transactions_by_category_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    result = repo.get_all_transactions_by_category("NonExistent")
+    assert result == []
+
+
+def test_get_monthly_cashflow_trend_with_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    # Add transactions across 3 months
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-500.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-02-15"),
+            amount=-800.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-05"),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-03-15"),
+            amount=-300.0,
+            category="Food",
+            description="Lunch",
+        )
+    )
+
+    trend = repo.get_monthly_cashflow_trend(3)
+
+    # Ordered ascending by year/month
+    assert len(trend) == 3
+    assert trend[0] == (2023, 1, 1500.0)  # 2000 - 500
+    assert trend[1] == (2023, 2, 1200.0)  # 2000 - 800
+    assert trend[2] == (2023, 3, 1700.0)  # 2000 - 300
+
+
+def test_get_monthly_cashflow_trend_limits_results(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    for month in range(1, 7):
+        repo.add_transaction(
+            Transaction(
+                id=None,
+                date=date(2023, month, 10),
+                amount=-100.0,
+                category="Food",
+                description="Groceries",
+            )
+        )
+
+    # Request only 3 most recent months
+    trend = repo.get_monthly_cashflow_trend(3)
+
+    assert len(trend) == 3
+    # Should return the 3 most recent months ascending
+    assert trend[0][1] == 4
+    assert trend[1][1] == 5
+    assert trend[2][1] == 6
+
+
+def test_get_monthly_cashflow_trend_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    trend = repo.get_monthly_cashflow_trend(6)
+    assert trend == []
+
+
+def test_get_all_transactions_pagination_offset_beyond_count(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    # Offset beyond available data
+    result = repo.get_all_transactions(limit=100, offset=999)
+    assert result == []
+
+
+def test_get_all_transactions_limit_zero(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    result = repo.get_all_transactions(limit=0, offset=0)
+    assert result == []
+
+
+def test_search_by_keyword_offset_beyond_count(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Shopping",
+            description="Amazon Order",
+        )
+    )
+
+    result = repo.search_by_keyword("Amazon", limit=100, offset=999)
+    assert result == []
+
+
+def test_search_by_keyword_limit_zero(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-05"),
+            amount=-50.0,
+            category="Shopping",
+            description="Amazon Order",
+        )
+    )
+
+    result = repo.search_by_keyword("Amazon", limit=0, offset=0)
+    assert result == []
