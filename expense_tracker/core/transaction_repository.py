@@ -334,5 +334,14 @@ class TransactionRepository:
         for row in rows.fetchall():
             result.append((row["year"], row["month"]))
         return result
+    
+    def transaction_exists(self, transaction: Transaction) -> bool:
+        """Checks if a transaction with the same date, amount, and description already exists in the database.
+        """
+        row = self.conn.execute(
+            "SELECT 1 FROM transactions WHERE date = ? AND amount = ? AND description = ?",
+            (transaction.date.isoformat(), transaction.amount, transaction.description),
+        )
+        return row.fetchone() is not None
 
 
