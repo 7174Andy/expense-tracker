@@ -1,0 +1,46 @@
+name: Deploy MkDocs to Github Pages
+
+on:
+    release:
+        types:
+            - published
+    push:
+        branches:
+            - main
+permissions:
+    contents: write
+
+jobs:
+    docs:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up UV
+              uses: astral-sh/setup-uv@v6
+
+            - name: Install Dependencies
+              run: |
+                  uv sync --extra dev --extra docs
+
+            - name: Set up git user
+              run: |
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+            - name: Build and upload docs (release)
+              if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  uv run mike deploy --update-aliases --allow-empty --push "${{ github.event.release.tag_name }}" latest
+
+            - name: Build and upload docs (dev)
+              if: ${{ github.event_name == 'push' }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  uv run mike deploy --update-aliases --allow-empty --push dev
