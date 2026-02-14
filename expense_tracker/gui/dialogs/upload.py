@@ -78,6 +78,8 @@ class UploadDialog(tk.Toplevel):
                 transaction.category = self.merchant_service.categorize_merchant(
                     transaction.description, transaction.amount
                 )
+                if self.repo.transaction_exists(transaction):
+                    continue  # Skip duplicates
                 self.repo.add_transaction(transaction)
             messagebox.showinfo("Success", "Bank statement uploaded successfully.")
             self.destroy()
