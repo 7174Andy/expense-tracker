@@ -298,7 +298,7 @@ class TransactionRepository:
         return (result["year"], result["month"])
     
 
-    def get_all_months_with_data(self) -> list[tuple[int, int]]:
+    def get_all_months_with_data(self) -> set[tuple[int, int]]:
         """
         Returns a list of (year, month) tuples for all months that have transaction data.
         Ordered by year and month descending (most recent first).
