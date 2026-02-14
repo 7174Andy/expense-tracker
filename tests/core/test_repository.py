@@ -1154,3 +1154,109 @@ def test_get_all_months_with_data_single_month(in_memory_repo):
     assert isinstance(months, set)
     assert len(months) == 1
     assert (2023, 5) in months
+
+
+def test_transaction_exists_returns_true_for_duplicate(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    assert repo.transaction_exists(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+
+def test_transaction_exists_returns_false_when_not_found(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+
+    assert not repo.transaction_exists(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+
+def test_transaction_exists_different_date(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    assert not repo.transaction_exists(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-16"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+
+def test_transaction_exists_different_amount(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    assert not repo.transaction_exists(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-75.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+
+def test_transaction_exists_different_description(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+
+    assert not repo.transaction_exists(
+        Transaction(
+            id=None,
+            date=date.fromisoformat("2023-01-15"),
+            amount=-50.0,
+            category="Food",
+            description="Restaurant",
+        )
+    )
