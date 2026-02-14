@@ -1,4 +1,5 @@
 import calendar
+import platform
 import tkinter as tk
 from tkinter import ttk
 
@@ -82,7 +83,11 @@ class StatisticsTab(tk.Frame):
         self._scroll_canvas.unbind_all("<MouseWheel>")
 
     def _on_mousewheel(self, event):
-        self._scroll_canvas.yview_scroll(-1 * (event.delta // 120), "units")
+        if platform.system() == "Darwin":
+            delta = -event.delta
+        else:
+            delta = -1 * (event.delta // 120)
+        self._scroll_canvas.yview_scroll(delta, "units")
 
     def _build_header(self):
         """Build header with month navigation controls."""
