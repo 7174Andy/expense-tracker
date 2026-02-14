@@ -3,14 +3,14 @@ import tkinter as tk
 from tkinter import messagebox
 
 from expense_tracker.core.models import Transaction
-from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.services.transaction import TransactionService
 from expense_tracker.gui.dialogs.expense_form import build_expense_form, validate_amount
 
 
 class AddExpenseDialog(tk.Toplevel):
-    def __init__(self, master, repo: TransactionRepository):
+    def __init__(self, master, transaction_service: TransactionService):
         super().__init__(master)
-        self.repo = repo
+        self.transaction_service = transaction_service
         self.title("Add Expense")
         self.resizable(False, False)
 
@@ -42,7 +42,7 @@ class AddExpenseDialog(tk.Toplevel):
                 category=self.category_var.get() or "Uncategorized",
                 description=self.description_var.get() or "",
             )
-            saved_transaction = self.repo.add_transaction(transaction)
+            saved_transaction = self.transaction_service.add_transaction(transaction)
             self.result = saved_transaction.id
             self.destroy()
             messagebox.showinfo(

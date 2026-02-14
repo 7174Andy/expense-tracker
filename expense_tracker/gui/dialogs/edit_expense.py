@@ -2,10 +2,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from expense_tracker.core.transaction_repository import TransactionRepository
-from expense_tracker.core.merchant_repository import MerchantCategoryRepository
-from expense_tracker.services.merchant import MerchantCategoryService
-from expense_tracker.utils.merchant_normalizer import normalize_merchant
+from expense_tracker.services.transaction import TransactionService
 from expense_tracker.gui.dialogs.expense_form import build_expense_form, validate_amount
 
 logger = logging.getLogger(__name__)
@@ -15,17 +12,12 @@ class EditExpenseDialog(tk.Toplevel):
     def __init__(
         self,
         master,
-        repo: TransactionRepository,
-        merchant_repo: MerchantCategoryRepository,
+        transaction_service: TransactionService,
         transaction_id: int,
     ):
         super().__init__(master)
-        self.repo = repo
-        self.merchant_repo = merchant_repo
+        self.transaction_service = transaction_service
         self.transaction_id = transaction_id
-        self.merchant_service = MerchantCategoryService(
-            merchant_repo, repo, normalize_merchant
-        )
         self.title("Edit Expense")
         self.resizable(False, False)
 
@@ -55,19 +47,19 @@ class EditExpenseDialog(tk.Toplevel):
         self._load_transaction_data()
 
     def _load_transaction_data(self):
-        self.prev_data = self.repo.get_transaction(self.transaction_id)
+        self.prev_data = self.transaction_service.get_transaction(self.transaction_id)
         if self.prev_data is not None:
             self.amount_var.set(str(self.prev_data.amount))
             self.category_var.set(self.prev_data.category)
             self.description_var.set(self.prev_data.description)
 
-            # Only suggest category if the current category is "Uncategorized"
+            # Suggest a better category if currently uncategorized
             if self.prev_data.category == "Uncategorized":
-                suggested_category = self.merchant_repo.get_category(
-                    normalize_merchant(self.prev_data.description)
+                suggested = self.transaction_service.suggest_category(
+                    self.prev_data.description, self.prev_data.amount
                 )
-                if suggested_category:
-                    self.category_var.set(suggested_category.category)
+                if suggested != "Uncategorized":
+                    self.category_var.set(suggested)
 
     def _on_save(self):
         amount = validate_amount(self.amount_var)
@@ -80,34 +72,22 @@ class EditExpenseDialog(tk.Toplevel):
                 "category": self.category_var.get() or "Uncategorized",
                 "description": self.description_var.get() or "",
             }
-            self.repo.update_transaction(self.transaction_id, data)
 
-            # Check if we need to update merchant categories
-            if (
-                self.prev_data is not None
-                and self.prev_data.category != data["category"]
-            ):
-                try:
-                    self.merchant_service.update_category(
-                        self.prev_data.description, data["category"]
-                    )
-                    self.merchant_service.update_uncategorized_transactions()
-                    messagebox.showinfo(
-                        "Success",
-                        f"Transaction {self.transaction_id} updated and related transactions recategorized.",
-                    )
-                except Exception as e:
-                    messagebox.showerror(
-                        "Error", f"Failed to update related transactions: {e}"
-                    )
-                self.destroy()
+            categories_updated = self.transaction_service.update_transaction(
+                self.transaction_id, data
+            )
+
+            if categories_updated:
+                messagebox.showinfo(
+                    "Success",
+                    f"Transaction {self.transaction_id} updated and related transactions recategorized.",
+                )
             else:
-                # No category change, just close the dialog
                 self.result = self.transaction_id
                 messagebox.showinfo(
                     "Success", f"Transaction {self.transaction_id} updated."
                 )
-                self.destroy()
+            self.destroy()
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update transaction: {e}")

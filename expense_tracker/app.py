@@ -6,7 +6,10 @@ from expense_tracker.utils.path import get_database_path
 from expense_tracker.utils.migration import migrate_legacy_databases
 from expense_tracker.core.merchant_repository import MerchantCategoryRepository
 from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.services.merchant import MerchantCategoryService
+from expense_tracker.services.transaction import TransactionService
 from expense_tracker.services.statistics import StatisticsService
+from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
 def main():
     """Start the Expense Tracker application."""
@@ -24,6 +27,10 @@ def main():
     merchant_repo = MerchantCategoryRepository(
         str(get_database_path("merchant_categories.db"))
     )
+    merchant_service = MerchantCategoryService(
+        merchant_repo, transaction_repo, normalize_merchant
+    )
+    transaction_service = TransactionService(transaction_repo, merchant_service)
     statistics_service = StatisticsService(transaction_repo)
 
     root = Tk()
@@ -35,6 +42,6 @@ def main():
         tb.Style("darkly")
     except Exception:
         ttk.Style()
-    MainWindow(root, transaction_repo, merchant_repo, statistics_service)
+    MainWindow(root, transaction_repo, transaction_service, statistics_service)
     root.focus_force()
     root.mainloop()

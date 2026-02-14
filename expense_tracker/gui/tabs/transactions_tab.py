@@ -4,16 +4,23 @@ from datetime import date
 from tkinter import ttk, messagebox
 
 from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.services.transaction import TransactionService
 from expense_tracker.gui.dialogs.add_expense import AddExpenseDialog
 from expense_tracker.gui.dialogs.edit_expense import EditExpenseDialog
 from expense_tracker.gui.dialogs.upload import UploadDialog
 
 
 class TransactionsTab(tk.Frame):
-    def __init__(self, master, transaction_repo, merchant_repo, main_window):
+    def __init__(
+        self,
+        master,
+        transaction_repo,
+        transaction_service: TransactionService,
+        main_window,
+    ):
         super().__init__(master)
         self.transaction_repo: TransactionRepository = transaction_repo
-        self.merchant_repo = merchant_repo
+        self.transaction_service = transaction_service
         self.main_window = main_window
         self._current_page = 0
         self._page_size = 100
@@ -173,12 +180,10 @@ class TransactionsTab(tk.Frame):
         return ids
 
     def _upload_statement(self):
-        self.main_window._open_dialog(
-            UploadDialog, self.transaction_repo, self.merchant_repo
-        )
+        self.main_window._open_dialog(UploadDialog, self.transaction_service)
 
     def _add_transaction(self):
-        self.main_window._open_dialog(AddExpenseDialog, self.transaction_repo)
+        self.main_window._open_dialog(AddExpenseDialog, self.transaction_service)
 
     def _edit_transaction(self):
         transaction_ids = self._get_selected_ids()
@@ -196,8 +201,7 @@ class TransactionsTab(tk.Frame):
 
         self.main_window._open_dialog(
             EditExpenseDialog,
-            self.transaction_repo,
-            self.merchant_repo,
+            self.transaction_service,
             transaction_ids[0],
         )
 
@@ -216,7 +220,7 @@ class TransactionsTab(tk.Frame):
         )
 
         if confirm:
-            deleted = self.transaction_repo.delete_multiple_transactions(
+            deleted = self.transaction_service.delete_multiple_transactions(
                 transaction_ids
             )
             messagebox.showinfo(
