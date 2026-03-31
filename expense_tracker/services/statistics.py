@@ -48,7 +48,12 @@ class StatisticsService:
             MonthlyMetrics with net income, top spending category, and additional stats
         """
         start_date, end_date = self._get_month_date_range(year, month)
-        net_income = self.transaction_repo.get_monthly_net_income(start_date, end_date)
+
+        # Single query for net_income, total_expenses, transaction_count
+        net_income, total_expenses, transaction_count = (
+            self.transaction_repo.get_monthly_aggregates(start_date, end_date)
+        )
+
         top_category_data = self.transaction_repo.get_spending_by_category(start_date, end_date)
         top_category_data = top_category_data[0] if top_category_data else None
 
@@ -57,16 +62,17 @@ class StatisticsService:
         else:
             top_category, top_spending = None, None
 
-        total_expenses = self.get_monthly_total_expense(year, month)
-        transaction_count = self.get_monthly_transaction_count(year, month)
         avg_transaction = total_expenses / transaction_count if transaction_count > 0 else 0.0
 
-        # Previous month calculations
+        # Previous month
         if month == 1:
             prev_year, prev_month = year - 1, 12
         else:
             prev_year, prev_month = year, month - 1
-        prev_month_expenses = self.get_monthly_total_expense(prev_year, prev_month)
+        prev_start, prev_end = self._get_month_date_range(prev_year, prev_month)
+        _, prev_month_expenses, _ = (
+            self.transaction_repo.get_monthly_aggregates(prev_start, prev_end)
+        )
 
         if prev_month_expenses > 0:
             month_over_month_pct = ((total_expenses - prev_month_expenses) / prev_month_expenses) * 100

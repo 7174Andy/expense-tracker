@@ -1449,6 +1449,56 @@ def test_get_transaction_count_no_data(in_memory_repo):
     assert count == 0
 
 
+def test_get_monthly_aggregates(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=2000.0,
+            category="Income",
+            description="Salary",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 10),
+            amount=-500.0,
+            category="Food",
+            description="Groceries",
+        )
+    )
+    repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 15),
+            amount=-100.0,
+            category="Shopping",
+            description="Clothes",
+        )
+    )
+
+    net_income, total_expenses, txn_count = repo.get_monthly_aggregates(
+        date(2023, 1, 1), date(2023, 2, 1)
+    )
+
+    assert net_income == 1400.0  # 2000 - 500 - 100
+    assert total_expenses == 600.0  # 500 + 100
+    assert txn_count == 3
+
+
+def test_get_monthly_aggregates_no_data(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    net_income, total_expenses, txn_count = repo.get_monthly_aggregates(
+        date(2023, 1, 1), date(2023, 2, 1)
+    )
+
+    assert net_income == 0.0
+    assert total_expenses == 0.0
+    assert txn_count == 0
+
+
 def test_get_all_transactions_by_category(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     repo.add_transaction(

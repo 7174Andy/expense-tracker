@@ -222,6 +222,30 @@ class TransactionRepository:
             result.append((row["year"], row["month"], row["net_amount"]))
         return result
 
+    def get_monthly_aggregates(
+        self, start_date: date, end_date: date
+    ) -> tuple[float, float, int]:
+        """
+        Returns (net_income, total_expenses, transaction_count) in a single query.
+        """
+        row = self.conn.execute(
+            """
+            SELECT
+                SUM(amount) AS net_income,
+                SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END) AS total_expenses,
+                COUNT(*) AS transaction_count
+            FROM transactions
+            WHERE date >= ? AND date < ?
+            """,
+            (start_date.isoformat(), end_date.isoformat()),
+        )
+        result = row.fetchone()
+        return (
+            result["net_income"] if result["net_income"] is not None else 0.0,
+            result["total_expenses"] if result["total_expenses"] is not None else 0.0,
+            result["transaction_count"] or 0,
+        )
+
     def get_monthly_net_income(self, start_date: date, end_date: date) -> float:
         """
         Returns the net income (total income minus total expenses) for a specific month.
