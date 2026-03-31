@@ -112,66 +112,63 @@ class StatisticsTab(tk.Frame):
 
         self._update_header_label()
 
+    def _build_metric_card(
+        self,
+        container: tk.Frame,
+        row: int,
+        col: int,
+        title: str,
+        default_value: str = "$0.00",
+        value_font_size: int = 28,
+    ) -> tk.Label:
+        """Build a single metric card and return its value label."""
+        card = tk.Frame(
+            container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        )
+        card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+
+        tk.Label(
+            card,
+            text=title,
+            font=("Arial", 14, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        ).pack(pady=(20, 10))
+
+        value_label = tk.Label(
+            card,
+            text=default_value,
+            font=("Arial", value_font_size, "bold"),
+            bg="#2b2b2b",
+            fg="#ffffff",
+        )
+        value_label.pack(pady=(10, 20))
+        return value_label
+
     def _build_metrics_cards(self):
         """Build card-based layout for displaying metrics (2x3 grid)."""
-        # Container for metrics cards
         cards_container = tk.Frame(self._content_frame)
         cards_container.pack(fill=tk.X, padx=20, pady=10)
 
-        # Configure 2x3 grid
         for col in range(3):
             cards_container.grid_columnconfigure(col, weight=1)
         for row in range(2):
             cards_container.grid_rowconfigure(row, weight=1)
 
-        # Row 0, Col 0: Net Income Card
-        net_income_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        # Row 0
+        self.net_income_label = self._build_metric_card(
+            cards_container, 0, 0, "Monthly Net Income"
         )
-        net_income_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        tk.Label(
-            net_income_card,
-            text="Monthly Net Income",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.net_income_label = tk.Label(
-            net_income_card,
-            text="$0.00",
-            font=("Arial", 28, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
+        # Top Spending Category — has two value labels, so build manually on returned card
+        self.top_category_name_label = self._build_metric_card(
+            cards_container, 0, 1, "Top Spending Category", "N/A", value_font_size=24
         )
-        self.net_income_label.pack(pady=(10, 20))
-
-        # Row 0, Col 1: Top Spending Category Card
-        top_category_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
-        )
-        top_category_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-
-        tk.Label(
-            top_category_card,
-            text="Top Spending Category",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.top_category_name_label = tk.Label(
-            top_category_card,
-            text="N/A",
-            font=("Arial", 24, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        )
-        self.top_category_name_label.pack(pady=(5, 5))
-
+        # Add sub-label for the amount on the same card
+        card_frame = self.top_category_name_label.master
+        self.top_category_name_label.pack_configure(pady=(5, 5))
         self.top_category_amount_label = tk.Label(
-            top_category_card,
+            card_frame,
             text="$0.00",
             font=("Arial", 18),
             bg="#2b2b2b",
@@ -179,97 +176,20 @@ class StatisticsTab(tk.Frame):
         )
         self.top_category_amount_label.pack(pady=(5, 20))
 
-        # Row 0, Col 2: Total Expenses Card
-        total_expenses_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        self.total_expenses_label = self._build_metric_card(
+            cards_container, 0, 2, "Total Expenses"
         )
-        total_expenses_card.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
 
-        tk.Label(
-            total_expenses_card,
-            text="Total Expenses",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.total_expenses_label = tk.Label(
-            total_expenses_card,
-            text="$0.00",
-            font=("Arial", 28, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
+        # Row 1
+        self.txn_count_label = self._build_metric_card(
+            cards_container, 1, 0, "Transactions", "0"
         )
-        self.total_expenses_label.pack(pady=(10, 20))
-
-        # Row 1, Col 0: Transaction Count Card
-        txn_count_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
+        self.avg_txn_label = self._build_metric_card(
+            cards_container, 1, 1, "Avg Transaction"
         )
-        txn_count_card.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-
-        tk.Label(
-            txn_count_card,
-            text="Transactions",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.txn_count_label = tk.Label(
-            txn_count_card,
-            text="0",
-            font=("Arial", 28, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
+        self.mom_label = self._build_metric_card(
+            cards_container, 1, 2, "vs. Last Month", "N/A"
         )
-        self.txn_count_label.pack(pady=(10, 20))
-
-        # Row 1, Col 1: Average Transaction Card
-        avg_txn_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
-        )
-        avg_txn_card.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
-
-        tk.Label(
-            avg_txn_card,
-            text="Avg Transaction",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.avg_txn_label = tk.Label(
-            avg_txn_card,
-            text="$0.00",
-            font=("Arial", 28, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        )
-        self.avg_txn_label.pack(pady=(10, 20))
-
-        # Row 1, Col 2: Month-over-Month Card
-        mom_card = tk.Frame(
-            cards_container, relief=tk.RIDGE, borderwidth=2, bg="#2b2b2b"
-        )
-        mom_card.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
-
-        tk.Label(
-            mom_card,
-            text="vs. Last Month",
-            font=("Arial", 14, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        ).pack(pady=(20, 10))
-
-        self.mom_label = tk.Label(
-            mom_card,
-            text="N/A",
-            font=("Arial", 28, "bold"),
-            bg="#2b2b2b",
-            fg="#ffffff",
-        )
-        self.mom_label.pack(pady=(10, 20))
 
     def _build_category_chart(self):
         """Build the category spending bar chart section below cards."""
