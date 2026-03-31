@@ -154,10 +154,15 @@ class TransactionRepository:
         self.conn.commit()
         return cursor.rowcount
 
+    _ALLOWED_COLUMNS = frozenset({"date", "amount", "category", "description"})
+
     def update_transaction(self, transaction_id: int, data: dict) -> None:
         """
         Updates a transaction in the database.
         """
+        invalid_keys = data.keys() - self._ALLOWED_COLUMNS
+        if invalid_keys:
+            raise ValueError(f"Invalid column names: {invalid_keys}")
         updates = ", ".join(f"{key} = ?" for key in data.keys())
         values: list[object] = []
         for key, value in data.items():
