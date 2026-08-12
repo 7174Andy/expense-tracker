@@ -7,11 +7,10 @@ Inspired by [benjamin-awd/monopoly](https://github.com/benjamin-awd/monopoly), w
 
 ## What Changes
 - Split `extract.py` into a bank-agnostic layout pass (`page_lines`) and a profile-driven interpretation pass (`rows_from_lines`), replacing `parse_bofa_page` / `parse_bofa_statement_pdf` with a single public `parse_statement(path)`.
-- Add a frozen `StatementProfile` dataclass holding the only genuinely statement-specific values: detection substrings, date formats, skip prefixes, and sign convention. A profile keys on **(bank, statement type)** in one flat collection, so a bank issuing both checking and credit-card statements is two sibling profiles — not a nested per-bank grouping as in monopoly's `bank.statement_configs` + `StatementHandler`.
+- Add a frozen `StatementProfile` dataclass holding the only genuinely statement-specific values: detection substrings, date formats, and skip prefixes. A profile keys on **(bank, statement type)** in one flat collection — not a nested per-bank grouping as in monopoly's `bank.statement_configs` + `StatementHandler`.
 - Ship exactly two profiles: `BOFA_CHECKING` (tested against real statements) and `GENERIC` (fallback). **No speculative profiles for untested statements.**
 - Detect the profile from page-1 text, then PDF metadata, falling back to `GENERIC` so unknown banks are attempted rather than rejected. Text outranks metadata because two statement types from one bank share metadata and can only be told apart by text.
 - Add a boilerplate-removal preprocessing pass that drops lines repeated on every page (headers/footers), computed generically with `Counter` — no per-bank keyword lists.
-- Normalize amount signs per profile so credit-card statements (expenses printed as positives) do not import purchases as income.
 - Add a preview step to `UploadDialog`: show parsed rows with count and sum, require confirmation before writing to the database.
 - **BREAKING** (internal only): `parse_bofa_statement_pdf` and `parse_bofa_page` are removed. Sole caller is `upload.py:56`; no public API or database schema is affected.
 

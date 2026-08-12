@@ -17,7 +17,8 @@ Constraint driving the whole design: **only Bank of America statements are avail
 - An unknown bank is attempted via a generic profile, and any misparse is visible to the user before it reaches the database.
 
 **Non-Goals**
-- Profiles for statements we cannot test. Two ship: `BOFA_CHECKING` and `GENERIC`. A `BOFA_CREDIT` profile (with `expenses_positive=True` and a page-text header discriminator) waits for a real credit-card statement — its header substring and sign behavior would otherwise be guesswork. Detection is structured to accept it without change; until then a credit statement matches `BOFA_CHECKING` by metadata and the preview shows purchases as positives.
+- Profiles for statements we cannot test. Two ship: `BOFA_CHECKING` and `GENERIC`.
+- Credit-card statements. Out of scope entirely — no such statement is available to test against, and its sign convention, header, and layout would all be guesswork. Upgrade path when one appears: add an `expenses_positive: bool` field to `StatementProfile` (one field plus one negation at the parse site), register a sibling profile with a page-text discriminator, and rely on text-before-metadata detection to pick it over `BOFA_CHECKING`. Until then a credit statement falls to `BOFA_CHECKING` and the preview shows its purchases as positives — visible, not silent.
 - An explicit ETL orchestrator class. Monopoly's `Pipeline` holds `passwords` and a handler across extract/transform/load stages; here extract is `parse_statement()` and load is `TransactionService.import_transactions` — two calls with no shared state. The transform stage was year inference, which is out of scope below.
 - OCR for scanned/image-only statements. No such statements exist in use today.
 - Encrypted/password-protected PDF support. Add when a password-protected statement actually appears.
@@ -58,12 +59,13 @@ class StatementProfile:
     detect: tuple[str, ...]           # substrings sought in page-1 text, then PDF metadata
     date_formats: tuple[str, ...]     # ("%m/%d/%y",) — must include a year
     skip: tuple[str, ...]             # description prefixes to drop ("total ", "balance ")
-    expenses_positive: bool = False   # statement prints expenses as positives (credit-card style)
 ```
 
-The unit is a **(bank, statement type)** pair, in one flat collection. This comes from monopoly's `handler.py`: each of its banks holds a list of `statement_configs`, and `StatementHandler` picks between them at parse time by searching for a `header_pattern`, returning a `DebitStatement` or a `CreditStatement`. The reason is that one institution's debit and credit statements differ in layout and carry **opposite sign conventions**.
+The unit is a **(bank, statement type)** pair, in one flat collection. This comes from monopoly's `handler.py`: each of its banks holds a list of `statement_configs`, and `StatementHandler` picks between them at parse time by searching for a `header_pattern`, returning a `DebitStatement` or a `CreditStatement`. The reason is that one institution's debit and credit statements differ in layout and carry opposite sign conventions.
 
-Monopoly needs two config levels (bank → statement configs), a handler to walk them, and a `BaseStatement`/`DebitStatement`/`CreditStatement` hierarchy. Flattening to one profile list collapses all three into a single detection pass: "BofA Checking" and "BofA Credit" are sibling entries, not a nested grouping. Same expressiveness, no handler, no class tree.
+Monopoly needs two config levels (bank → statement configs), a handler to walk them, and a `BaseStatement`/`DebitStatement`/`CreditStatement` hierarchy. Flattening to one profile list collapses all three into a single detection pass: statement types are sibling entries, not a nested grouping. Same expressiveness, no handler, no class tree.
+
+Only the naming and the flat shape are adopted now — credit-card support itself is a Non-Goal above. `BOFA_CHECKING` is named for what it is so a sibling can be added later without renaming or restructuring; the flat tuple is what a list of profiles would be anyway, so this costs nothing today.
 
 Detection is two ordered passes over `PROFILES`: **page-1 text first, then metadata**, then `GENERIC`. A profile matches when **any** of its `detect` substrings is found. Text outranks metadata specifically because of the case above — statements from one bank are produced by the same software, so their metadata is likely identical and cannot discriminate them, while page text can. Metadata-first would let the less specific signal win and the discriminator never run. pdfplumber exposes `pdf.metadata`, so neither pass needs a new dependency.
 
@@ -77,16 +79,16 @@ Monopoly validates that parsed amounts sum to the statement's declared total. Th
 
 A preview table showing count, sum, and every parsed row catches all of those, needs no per-bank config, and is what makes pointing `GENERIC` at an unknown bank safe. This matters because duplicate detection (`transaction.py:73`) will not save the user from rows that are wrong but unique.
 
-### Decision 5: `expenses_positive` ships despite no statement needing it.
+### Decision 5: No untriggered code paths.
 
-The BofA statement in use is a **checking** statement, printing withdrawals with a literal `-`, so `expenses_positive=False` is correct and no shipped profile sets it `True`. The flag is kept anyway: it is one dataclass field plus one negation, and it guards a silent data-corruption path. A credit-card statement prints purchases as bare positives, which would import as income *and* corrupt categorization, since `categorize_merchant` receives the amount (`transaction.py:69`). A credit-card statement is the most likely next profile — plausibly from this same institution, which is why the profile key is (bank, statement type) rather than bank.
+The design ships nothing that no available statement exercises. Year inference was cut because BofA prints `MM/DD/YY`; sign inversion (`expenses_positive`) was cut because BofA checking prints withdrawals with a literal `-`. Both have upgrade paths recorded in Non-Goals, each a handful of lines, and neither is speculatively built.
 
-This is the one place the design deliberately keeps an untriggered code path. Contrast with year inference (Non-Goals), which was cut: that would have been a page-1 year scraper plus rollover logic, defending against a format not in hand.
+The cost of this discipline is that the first credit-card statement imports its purchases as income. That is accepted because the preview makes it visible before anything is written, and because guessing a sign convention for a statement format nobody has read is not meaningfully safer than not having the field at all.
 
 ## Risks / Trade-offs
 
 - **`GENERIC` silently produces wrong rows for an unknown bank.** → Preview requires confirmation before any write; the user sees count, sum, and rows.
-- **Sign convention cannot be inferred from the PDF.** Getting it wrong files purchases as income *and* corrupts categorization, since `categorize_merchant` is handed the amount (`transaction.py:69`). → Explicit per-profile `expenses_positive`; default `False` preserves today's behavior; preview surfaces the error.
+- **A statement printing expenses as positives imports them as income**, which also corrupts categorization, since `categorize_merchant` is handed the amount (`transaction.py:69`). No shipped profile has this convention, and none is guessed at. → The preview surfaces it before any write: purchases appear as positive amounts and the sum has the wrong sign. Recovery is the `expenses_positive` upgrade path in Non-Goals.
 - **Boilerplate removal could delete a real transaction** that appears identically on every page. → Only lines present on *all* pages are dropped; a genuine transaction repeating verbatim across every page of a statement is not a realistic case.
 - **BofA behavior regression during the rewrite.** → Port the existing y-bucketing and amount rules verbatim; keep the current test assertions as the regression baseline.
 - **Removing `parse_bofa_*` breaks any external caller.** → Grep confirms one caller (`upload.py:56`) and the test module. No public API.
@@ -103,7 +105,7 @@ Rollback: steps are additive until step 4, so reverting is a single commit.
 
 ## Resolved Questions
 
-- **Statement type: checking.** Withdrawals are printed with a literal `-`, so `expenses_positive=False` is correct for `BOFA_CHECKING` and matches today's behavior.
+- **Statement type: checking.** Withdrawals are printed with a literal `-`, so preserving the printed sign is correct for `BOFA_CHECKING` and matches today's behavior. This is why sign inversion is out of scope.
 - **Date format: `MM/DD/YY`.** `DATE_RX` at `extract.py:6` is correct, `BOFA_CHECKING.date_formats = ("%m/%d/%y",)`, and year inference was dropped from scope as a result (see Non-Goals).
 
 Consequence: the `BOFA_CHECKING` profile reproduces current behavior exactly. This change is a refactor plus preprocessing plus preview, with **no intended behavior change** for the statements in use — so the existing test assertions in `tests/utils/test_extract.py` are a valid regression baseline, not tests to be rewritten for new expectations.

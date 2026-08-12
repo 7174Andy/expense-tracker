@@ -1,9 +1,9 @@
 ## ADDED Requirements
 
 ### Requirement: Statement Profile Configuration
-The system SHALL express statement-specific parsing rules as declarative, immutable profiles rather than per-bank parsing functions. A profile SHALL define its name, detection substrings, accepted date formats, description prefixes to skip, and the statement's amount sign convention.
+The system SHALL express statement-specific parsing rules as declarative, immutable profiles rather than per-bank parsing functions. A profile SHALL define its name, detection substrings, accepted date formats, and description prefixes to skip.
 
-A profile SHALL correspond to a **single bank and statement type** pair, not to a bank. Registered profiles SHALL form one flat collection, so a bank issuing several statement types (for example checking and credit card) is represented by several sibling profiles rather than by a nested per-bank grouping.
+A profile SHALL correspond to a **single bank and statement type** pair, not to a bank. Registered profiles SHALL form one flat collection, so a bank issuing several statement types is represented by several sibling profiles rather than by a nested per-bank grouping.
 
 Adding support for a new bank or a new statement type SHALL require only registering an additional profile, with no new parsing function, module, or conditional branch in the parser.
 
@@ -15,11 +15,6 @@ Adding support for a new bank or a new statement type SHALL require only registe
 - **WHEN** a developer adds support for an additional bank whose statements follow the date-then-amount row layout
 - **THEN** the change is limited to registering one new profile entry
 - **AND** no existing parsing function is modified
-
-#### Scenario: One bank with two statement types
-- **WHEN** a bank issues two statement types whose layouts or sign conventions differ
-- **THEN** each is registered as its own profile in the same flat collection
-- **AND** neither requires a per-bank grouping level
 
 #### Scenario: Profiles are immutable
 - **WHEN** code attempts to mutate a registered profile's fields
@@ -119,26 +114,20 @@ Row interpretation SHALL operate on lists of text tokens, independent of any PDF
 - **WHEN** row interpretation is tested
 - **THEN** it accepts plain lists of text tokens as input
 
-### Requirement: Amount Sign Normalization
-The system SHALL normalize parsed amounts to the application's convention, in which expenses are negative and income is positive. The system SHALL recognize amounts formatted with currency symbols, thousands separators, leading minus signs, and surrounding parentheses. When a profile declares that its statements print expenses as positive values, the system SHALL invert the sign of parsed amounts.
-
-The sign convention SHALL be a property of the profile, and therefore of the bank and statement type together, because statement types from one bank may print opposite conventions.
+### Requirement: Amount Parsing
+The system SHALL parse monetary amounts to the application's convention, in which expenses are negative and income is positive, preserving the sign as printed on the statement. The system SHALL recognize amounts formatted with currency symbols, thousands separators, leading minus signs, and surrounding parentheses.
 
 #### Scenario: Parenthesized amount is an expense
 - **WHEN** an amount is written in parentheses
 - **THEN** it is parsed as a negative value
 
+#### Scenario: Negative amount
+- **WHEN** an amount carries a leading minus sign
+- **THEN** it is parsed as a negative value
+
 #### Scenario: Currency symbols and separators
 - **WHEN** an amount includes a currency symbol, thousands separators, or surrounding whitespace
 - **THEN** those characters are ignored and the numeric value is parsed
-
-#### Scenario: Statement printing expenses as positives
-- **WHEN** the selected profile declares that expenses are printed as positive values
-- **THEN** parsed amounts are inverted so purchases are stored as negative
-
-#### Scenario: Statement printing expenses as negatives
-- **WHEN** the selected profile does not declare that expenses are printed as positive values
-- **THEN** parsed amounts retain the sign shown on the statement
 
 ### Requirement: Import Preview and Confirmation
 The system SHALL present the transactions parsed from a statement to the user for review before writing any of them to the database. The preview SHALL show each parsed transaction's date, description, and amount, together with the total count and the sum of amounts. The system SHALL write transactions only after the user confirms, and SHALL write none if the user cancels.

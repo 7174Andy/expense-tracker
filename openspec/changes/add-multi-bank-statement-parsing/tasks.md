@@ -6,8 +6,8 @@
 - [ ] 1.3 Test that words sharing a vertical position group into one ordered line, and that words beyond the tolerance stay separate
 
 ## 2. Statement Profiles
-- [ ] 2.1 Add frozen `StatementProfile` dataclass with `name`, `detect`, `date_formats`, `skip`, `expenses_positive=False`
-- [ ] 2.2 Define `BOFA_CHECKING` profile reproducing today's behavior exactly — `("%m/%d/%y",)`, skip `("total ",)`, `expenses_positive=False`
+- [ ] 2.1 Add frozen `StatementProfile` dataclass with `name`, `detect`, `date_formats`, `skip`
+- [ ] 2.2 Define `BOFA_CHECKING` profile reproducing today's behavior exactly — `("%m/%d/%y",)`, skip `("total ",)`
 - [ ] 2.3 Define `GENERIC` fallback profile accepting `("%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d")` with the same skip prefixes
 - [ ] 2.4 Register `PROFILES = (BOFA_CHECKING,)` as a flat collection keyed by (bank, statement type) — do NOT add profiles for statements without a real PDF to test against, and do NOT introduce a per-bank grouping level
 - [ ] 2.5 Test that a profile is immutable
@@ -31,11 +31,10 @@
 - [ ] 5.4 Build the date regex from `profile.date_formats` rather than the module-level `DATE_RX`
 - [ ] 5.5 Test: valid line, missing date, missing amount, numeric token inside description, skip-prefix line
 
-## 6. Amount Signs
-- [ ] 6.1 Keep `_parse_amount` handling `$`, thousands separators, leading `-`, and parentheses
-- [ ] 6.2 Invert the parsed amount when `profile.expenses_positive` is set
-- [ ] 6.3 Test both sign conventions, retaining the existing `_parse_amount` assertions as the regression baseline
-- [ ] 6.4 Assert every registered profile's `date_formats` include a year — year inference is explicitly out of scope
+## 6. Amount Parsing
+- [ ] 6.1 Keep `_parse_amount` unchanged — `$`, thousands separators, leading `-`, and parentheses — preserving the sign as printed
+- [ ] 6.2 Retain the existing `_parse_amount` assertions verbatim as the regression baseline
+- [ ] 6.3 Assert every registered profile's `date_formats` include a year — year inference is explicitly out of scope
 
 ## 7. Public Entry Point
 - [ ] 7.1 Add `parse_statement(path) -> list[dict]` composing: open → detect profile → `page_lines` per page → boilerplate removal → `rows_from_lines`
