@@ -12,12 +12,13 @@ Constraint driving the whole design: **only Bank of America statements are avail
 ## Goals / Non-Goals
 
 **Goals**
-- Adding bank #2 is a one-entry append to `PROFILES`, with no new function, file, or branch in the parser.
+- Adding the next bank — or the next statement type from a bank already supported — is a one-entry append to `PROFILES`, with no new function, file, or branch in the parser.
 - Bank-specific row logic becomes testable without constructing mocked PDF page objects.
 - An unknown bank is attempted via a generic profile, and any misparse is visible to the user before it reaches the database.
 
 **Non-Goals**
-- Profiles for banks we cannot test. Two profiles ship: `BOFA` and `GENERIC`.
+- Profiles for statements we cannot test. Two ship: `BOFA_CHECKING` and `GENERIC`. A `BOFA_CREDIT` profile (with `expenses_positive=True` and a page-text header discriminator) waits for a real credit-card statement — its header substring and sign behavior would otherwise be guesswork. Detection is structured to accept it without change; until then a credit statement matches `BOFA_CHECKING` by metadata and the preview shows purchases as positives.
+- An explicit ETL orchestrator class. Monopoly's `Pipeline` holds `passwords` and a handler across extract/transform/load stages; here extract is `parse_statement()` and load is `TransactionService.import_transactions` — two calls with no shared state. The transform stage was year inference, which is out of scope below.
 - OCR for scanned/image-only statements. No such statements exist in use today.
 - Encrypted/password-protected PDF support. Add when a password-protected statement actually appears.
 - Validating parsed totals against a statement's declared total (see Decision 4).
@@ -48,19 +49,23 @@ Consequence: the engine sits behind `page_lines(page)`, so a future swap touches
 
 Everything stays in `utils/extract.py` (~150 lines). Monopoly needs `banks/`, `identifiers.py`, `pipeline.py`, and `handler.py` because it serves 17 institutions and a CLI. At two profiles a package is pure indirection. Split into `utils/statements/` at 3+ profiles, per `openspec/project.md` ("single-file implementations until proven insufficient").
 
-### Decision 3: Profile-driven generic parser, not per-bank parsers.
+### Decision 3: Profile-driven generic parser, keyed by (bank, statement type).
 
 ```python
 @dataclass(frozen=True)
-class BankProfile:
-    name: str
-    detect: tuple[str, ...]           # substrings sought in PDF metadata, then page-1 text
-    date_formats: tuple[str, ...]     # ("%m/%d/%y",) — omit %y/%Y for year-less statements
+class StatementProfile:
+    name: str                         # "BofA Checking" — one bank AND statement type
+    detect: tuple[str, ...]           # substrings sought in page-1 text, then PDF metadata
+    date_formats: tuple[str, ...]     # ("%m/%d/%y",) — must include a year
     skip: tuple[str, ...]             # description prefixes to drop ("total ", "balance ")
     expenses_positive: bool = False   # statement prints expenses as positives (credit-card style)
 ```
 
-Detection order: metadata substring → page-1 text substring → `GENERIC`. A profile matches when **any** of its `detect` substrings is found. Statement generators are stable per institution, so metadata alone usually suffices, and pdfplumber exposes `pdf.metadata` without a new dependency.
+The unit is a **(bank, statement type)** pair, in one flat collection. This comes from monopoly's `handler.py`: each of its banks holds a list of `statement_configs`, and `StatementHandler` picks between them at parse time by searching for a `header_pattern`, returning a `DebitStatement` or a `CreditStatement`. The reason is that one institution's debit and credit statements differ in layout and carry **opposite sign conventions**.
+
+Monopoly needs two config levels (bank → statement configs), a handler to walk them, and a `BaseStatement`/`DebitStatement`/`CreditStatement` hierarchy. Flattening to one profile list collapses all three into a single detection pass: "BofA Checking" and "BofA Credit" are sibling entries, not a nested grouping. Same expressiveness, no handler, no class tree.
+
+Detection is two ordered passes over `PROFILES`: **page-1 text first, then metadata**, then `GENERIC`. A profile matches when **any** of its `detect` substrings is found. Text outranks metadata specifically because of the case above — statements from one bank are produced by the same software, so their metadata is likely identical and cannot discriminate them, while page text can. Metadata-first would let the less specific signal win and the discriminator never run. pdfplumber exposes `pdf.metadata`, so neither pass needs a new dependency.
 
 Implementation trap: `GENERIC` carries an empty `detect` tuple and MUST NOT be registered in `PROFILES`. It is reached only as the explicit fallback — an `all()`-based match over an empty tuple is vacuously true, so a registered `GENERIC` would match the first statement it saw and shadow every real profile.
 
@@ -74,7 +79,7 @@ A preview table showing count, sum, and every parsed row catches all of those, n
 
 ### Decision 5: `expenses_positive` ships despite no statement needing it.
 
-The BofA statement in use is a **checking** statement, printing withdrawals with a literal `-`, so `expenses_positive=False` is correct and no shipped profile sets it `True`. The flag is kept anyway: it is one dataclass field plus one negation, and it guards a silent data-corruption path. A credit-card statement prints purchases as bare positives, which would import as income *and* corrupt categorization, since `categorize_merchant` receives the amount (`transaction.py:69`). A credit-card statement is the most likely bank #2 — possibly the same institution.
+The BofA statement in use is a **checking** statement, printing withdrawals with a literal `-`, so `expenses_positive=False` is correct and no shipped profile sets it `True`. The flag is kept anyway: it is one dataclass field plus one negation, and it guards a silent data-corruption path. A credit-card statement prints purchases as bare positives, which would import as income *and* corrupt categorization, since `categorize_merchant` receives the amount (`transaction.py:69`). A credit-card statement is the most likely next profile — plausibly from this same institution, which is why the profile key is (bank, statement type) rather than bank.
 
 This is the one place the design deliberately keeps an untriggered code path. Contrast with year inference (Non-Goals), which was cut: that would have been a page-1 year scraper plus rollover logic, defending against a format not in hand.
 
@@ -88,7 +93,7 @@ This is the one place the design deliberately keeps an untriggered code path. Co
 
 ## Migration Plan
 
-1. Add `page_lines`, `BankProfile`, `PROFILES`, `rows_from_lines`, `parse_statement` alongside the existing functions.
+1. Add `page_lines`, `StatementProfile`, `PROFILES`, `rows_from_lines`, `parse_statement` alongside the existing functions.
 2. Port tests to the new seam, asserting the current BofA results unchanged.
 3. Switch `upload.py:56` to `parse_statement`, add the preview.
 4. Delete `parse_bofa_page` and `parse_bofa_statement_pdf`.
@@ -98,7 +103,7 @@ Rollback: steps are additive until step 4, so reverting is a single commit.
 
 ## Resolved Questions
 
-- **Statement type: checking.** Withdrawals are printed with a literal `-`, so `expenses_positive=False` is correct for `BOFA` and matches today's behavior.
-- **Date format: `MM/DD/YY`.** `DATE_RX` at `extract.py:6` is correct, `BOFA.date_formats = ("%m/%d/%y",)`, and year inference was dropped from scope as a result (see Non-Goals).
+- **Statement type: checking.** Withdrawals are printed with a literal `-`, so `expenses_positive=False` is correct for `BOFA_CHECKING` and matches today's behavior.
+- **Date format: `MM/DD/YY`.** `DATE_RX` at `extract.py:6` is correct, `BOFA_CHECKING.date_formats = ("%m/%d/%y",)`, and year inference was dropped from scope as a result (see Non-Goals).
 
-Consequence: the `BOFA` profile reproduces current behavior exactly. This change is a refactor plus preprocessing plus preview, with **no intended behavior change** for the statements in use — so the existing test assertions in `tests/utils/test_extract.py` are a valid regression baseline, not tests to be rewritten for new expectations.
+Consequence: the `BOFA_CHECKING` profile reproduces current behavior exactly. This change is a refactor plus preprocessing plus preview, with **no intended behavior change** for the statements in use — so the existing test assertions in `tests/utils/test_extract.py` are a valid regression baseline, not tests to be rewritten for new expectations.

@@ -5,17 +5,18 @@
 - [ ] 1.2 Keep this the only function touching the pdfplumber API, so a future engine swap is one function
 - [ ] 1.3 Test that words sharing a vertical position group into one ordered line, and that words beyond the tolerance stay separate
 
-## 2. Bank Profiles
-- [ ] 2.1 Add frozen `BankProfile` dataclass with `name`, `detect`, `date_formats`, `skip`, `expenses_positive=False`
-- [ ] 2.2 Define `BOFA` profile reproducing today's behavior exactly — checking statement, `("%m/%d/%y",)`, skip `("total ",)`, `expenses_positive=False`
+## 2. Statement Profiles
+- [ ] 2.1 Add frozen `StatementProfile` dataclass with `name`, `detect`, `date_formats`, `skip`, `expenses_positive=False`
+- [ ] 2.2 Define `BOFA_CHECKING` profile reproducing today's behavior exactly — `("%m/%d/%y",)`, skip `("total ",)`, `expenses_positive=False`
 - [ ] 2.3 Define `GENERIC` fallback profile accepting `("%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d")` with the same skip prefixes
-- [ ] 2.4 Register `PROFILES = (BOFA,)` — do NOT add profiles for banks without a real statement to test against
+- [ ] 2.4 Register `PROFILES = (BOFA_CHECKING,)` as a flat collection keyed by (bank, statement type) — do NOT add profiles for statements without a real PDF to test against, and do NOT introduce a per-bank grouping level
 - [ ] 2.5 Test that a profile is immutable
 
-## 3. Bank Detection
-- [ ] 3.1 Add `detect_profile(pdf) -> BankProfile`: match `detect` substrings against `pdf.metadata` values, then first-page text, else return `GENERIC`
-- [ ] 3.2 Determine BofA's actual metadata substring from a real statement and populate `BOFA.detect`
-- [ ] 3.3 Test all three paths: metadata match, page-text match, and fallback to `GENERIC`
+## 3. Statement Profile Detection
+- [ ] 3.1 Add `detect_profile(pdf) -> StatementProfile` doing two ordered passes over `PROFILES`: match `detect` substrings against first-page text, then against `pdf.metadata` values, else return `GENERIC`
+- [ ] 3.2 Confirm `GENERIC` is NOT in `PROFILES` — an empty `detect` tuple must never match (see `design.md` Decision 3)
+- [ ] 3.3 Determine BofA's actual metadata substring from a real statement and populate `BOFA_CHECKING.detect`
+- [ ] 3.4 Test all four paths: page-text match, metadata match, fallback to `GENERIC`, and text-outranks-metadata when both could match
 
 ## 4. Preprocessing
 - [ ] 4.1 Add boilerplate removal: `Counter` over joined lines across all pages, drop lines whose count equals the page count
