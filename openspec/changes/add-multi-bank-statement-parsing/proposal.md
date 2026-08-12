@@ -12,7 +12,6 @@ Inspired by [benjamin-awd/monopoly](https://github.com/benjamin-awd/monopoly), w
 - Detect the profile from PDF metadata, then page-1 text, falling back to `GENERIC` so unknown banks are attempted rather than rejected.
 - Add a boilerplate-removal preprocessing pass that drops lines repeated on every page (headers/footers), computed generically with `Counter` — no per-bank keyword lists.
 - Normalize amount signs per profile so credit-card statements (expenses printed as positives) do not import purchases as income.
-- Infer the year for statements printing year-less dates (`MM/DD`), handling December rows on a January statement.
 - Add a preview step to `UploadDialog`: show parsed rows with count and sum, require confirmation before writing to the database.
 - **BREAKING** (internal only): `parse_bofa_statement_pdf` and `parse_bofa_page` are removed. Sole caller is `upload.py:56`; no public API or database schema is affected.
 
@@ -25,5 +24,5 @@ Inspired by [benjamin-awd/monopoly](https://github.com/benjamin-awd/monopoly), w
   - Updated: `openspec/project.md` (PDF Format constraint, File Structure notes)
 - **Dependencies**: None added. Benchmarks rejected switching PDF engines — see `design.md`.
 - **Unaffected**: `TransactionService.import_transactions` already owns categorization and duplicate detection (`services/transaction.py:62-77`), so the parser contract stays `list[{date, description, amount}]` and nothing downstream changes.
-- **User Impact**: Non-BofA statements are attempted instead of silently mis-parsed; preview prevents bad imports.
+- **User Impact**: Non-BofA statements are attempted instead of silently mis-parsed; preview prevents bad imports. **No behavior change for the BofA checking statements in use** — the `BOFA` profile reproduces today's parsing exactly.
 - **Performance**: Neutral. Preprocessing adds one `Counter` pass over already-extracted lines.

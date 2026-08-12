@@ -75,7 +75,7 @@ The system SHALL discard lines that appear on every page of a statement before i
 - **THEN** no lines are discarded as boilerplate
 
 ### Requirement: Transaction Row Extraction
-The system SHALL interpret a reconstructed line as a transaction when the line begins with a token matching one of the profile's date formats and contains a token matching a monetary amount. The rightmost matching amount token SHALL be taken as the transaction amount, and the tokens between the date and that amount SHALL form the description. Lines whose description begins with one of the profile's skip prefixes SHALL be discarded.
+The system SHALL interpret a reconstructed line as a transaction when the line begins with a token matching one of the profile's date formats and contains a token matching a monetary amount. All profile date formats SHALL include a year. The rightmost matching amount token SHALL be taken as the transaction amount, and the tokens between the date and that amount SHALL form the description. Lines whose description begins with one of the profile's skip prefixes SHALL be discarded.
 
 Row interpretation SHALL operate on lists of text tokens, independent of any PDF library type, so it can be tested without constructing PDF objects.
 
@@ -122,21 +122,6 @@ The system SHALL normalize parsed amounts to the application's convention, in wh
 #### Scenario: Statement printing expenses as negatives
 - **WHEN** the selected profile does not declare that expenses are printed as positive values
 - **THEN** parsed amounts retain the sign shown on the statement
-
-### Requirement: Year Inference for Year-Less Dates
-When a profile's date formats omit a year, the system SHALL determine each transaction's year from the statement period printed on the statement. When a transaction's month is later than the statement's month, the system SHALL assign the preceding year.
-
-#### Scenario: Year taken from statement period
-- **WHEN** a statement prints transaction dates without a year and its statement period identifies a year
-- **THEN** each parsed transaction is assigned that year
-
-#### Scenario: Rollover across a year boundary
-- **WHEN** a statement's period falls in January and a transaction line is dated in December
-- **THEN** that transaction is assigned the preceding year
-
-#### Scenario: Statement year not found
-- **WHEN** a statement's dates omit a year and no statement period year can be located
-- **THEN** parsing fails with an error identifying the cause
 
 ### Requirement: Import Preview and Confirmation
 The system SHALL present the transactions parsed from a statement to the user for review before writing any of them to the database. The preview SHALL show each parsed transaction's date, description, and amount, together with the total count and the sum of amounts. The system SHALL write transactions only after the user confirms, and SHALL write none if the user cancels.

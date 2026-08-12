@@ -21,6 +21,7 @@ Constraint driving the whole design: **only Bank of America statements are avail
 - OCR for scanned/image-only statements. No such statements exist in use today.
 - Encrypted/password-protected PDF support. Add when a password-protected statement actually appears.
 - Validating parsed totals against a statement's declared total (see Decision 4).
+- Year inference for statements printing year-less dates (`MM/DD`). The BofA statement in use prints `MM/DD/YY`, and every `GENERIC` date format carries a year, so nothing would exercise the code. Upgrade path when a year-less statement appears: add the year-less format to that bank's profile, scrape a 4-digit year from page 1, append it to the raw token before `parse_date_from_str` (leaving `utils/date.py` untouched), and assign the preceding year when a row's month exceeds the statement month.
 - CSV export or a CLI. This is a GUI app; monopoly's CLI surface is not wanted.
 
 ## Decisions
@@ -71,11 +72,11 @@ Monopoly validates that parsed amounts sum to the statement's declared total. Th
 
 A preview table showing count, sum, and every parsed row catches all of those, needs no per-bank config, and is what makes pointing `GENERIC` at an unknown bank safe. This matters because duplicate detection (`transaction.py:73`) will not save the user from rows that are wrong but unique.
 
-### Decision 5: Year inference by string suffix, leaving `utils/date.py` untouched.
+### Decision 5: `expenses_positive` ships despite no statement needing it.
 
-`parse_date_from_str` already tries `%Y-%m-%d`, `%m/%d/%Y`, `%m/%d/%y` and is shared with the dialogs. Rather than adding a `year` parameter to a shared util, year-less raw dates get the inferred year appended (`"01/15"` → `"01/15/2026"`) before the existing call. Two lines, no shared-code change.
+The BofA statement in use is a **checking** statement, printing withdrawals with a literal `-`, so `expenses_positive=False` is correct and no shipped profile sets it `True`. The flag is kept anyway: it is one dataclass field plus one negation, and it guards a silent data-corruption path. A credit-card statement prints purchases as bare positives, which would import as income *and* corrupt categorization, since `categorize_merchant` receives the amount (`transaction.py:69`). A credit-card statement is the most likely bank #2 — possibly the same institution.
 
-Statement year comes from a 4-digit year on page 1. Rollover rule: if a row's month is greater than the statement's month, the row belongs to the previous year (December rows on a January statement).
+This is the one place the design deliberately keeps an untriggered code path. Contrast with year inference (Non-Goals), which was cut: that would have been a page-1 year scraper plus rollover logic, defending against a format not in hand.
 
 ## Risks / Trade-offs
 
@@ -95,7 +96,9 @@ Statement year comes from a 4-digit year on page 1. Rollover rule: if a row's mo
 
 Rollback: steps are additive until step 4, so reverting is a single commit.
 
-## Open Questions
+## Resolved Questions
 
-- Is the BofA statement in use a checking statement (withdrawals printed with a literal `-`, so `expenses_positive=False` is correct) or a credit-card statement (purchases printed as bare positives, requiring `expenses_positive=True`)? Today's parser assumes the former; the first real import through the preview will settle it.
-- Does the BofA statement print `MM/DD/YY` (as `DATE_RX` at `extract.py:6` requires) or `MM/DD` on some statement types? Determines whether year inference is exercised by `BOFA` or only by `GENERIC`.
+- **Statement type: checking.** Withdrawals are printed with a literal `-`, so `expenses_positive=False` is correct for `BOFA` and matches today's behavior.
+- **Date format: `MM/DD/YY`.** `DATE_RX` at `extract.py:6` is correct, `BOFA.date_formats = ("%m/%d/%y",)`, and year inference was dropped from scope as a result (see Non-Goals).
+
+Consequence: the `BOFA` profile reproduces current behavior exactly. This change is a refactor plus preprocessing plus preview, with **no intended behavior change** for the statements in use — so the existing test assertions in `tests/utils/test_extract.py` are a valid regression baseline, not tests to be rewritten for new expectations.

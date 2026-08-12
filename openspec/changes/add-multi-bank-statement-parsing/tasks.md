@@ -7,7 +7,7 @@
 
 ## 2. Bank Profiles
 - [ ] 2.1 Add frozen `BankProfile` dataclass with `name`, `detect`, `date_formats`, `skip`, `expenses_positive=False`
-- [ ] 2.2 Define `BOFA` profile reproducing today's behavior: `("%m/%d/%y",)`, skip `("total ",)`, `expenses_positive=False`
+- [ ] 2.2 Define `BOFA` profile reproducing today's behavior exactly — checking statement, `("%m/%d/%y",)`, skip `("total ",)`, `expenses_positive=False`
 - [ ] 2.3 Define `GENERIC` fallback profile accepting `("%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d")` with the same skip prefixes
 - [ ] 2.4 Register `PROFILES = (BOFA,)` — do NOT add profiles for banks without a real statement to test against
 - [ ] 2.5 Test that a profile is immutable
@@ -24,7 +24,7 @@
 - [ ] 4.4 Test that a line present on some but not all pages is retained
 
 ## 5. Row Interpretation
-- [ ] 5.1 Add `rows_from_lines(lines: list[list[str]], profile, statement_year=None) -> list[dict]` taking plain token lists — no PDF types
+- [ ] 5.1 Add `rows_from_lines(lines: list[list[str]], profile) -> list[dict]` taking plain token lists — no PDF types
 - [ ] 5.2 Port the date-at-start / rightmost-amount / description-between rules from `extract.py:32-53`
 - [ ] 5.3 Apply `profile.skip` prefixes case-insensitively against the description
 - [ ] 5.4 Build the date regex from `profile.date_formats` rather than the module-level `DATE_RX`
@@ -34,28 +34,22 @@
 - [ ] 6.1 Keep `_parse_amount` handling `$`, thousands separators, leading `-`, and parentheses
 - [ ] 6.2 Invert the parsed amount when `profile.expenses_positive` is set
 - [ ] 6.3 Test both sign conventions, retaining the existing `_parse_amount` assertions as the regression baseline
+- [ ] 6.4 Assert every registered profile's `date_formats` include a year — year inference is explicitly out of scope
 
-## 7. Year Inference
-- [ ] 7.1 Add `statement_year(pdf) -> int | None` scraping a 4-digit year from page 1
-- [ ] 7.2 For year-less `date_formats`, append the inferred year to the raw token before calling `parse_date_from_str` — leave `utils/date.py` unchanged
-- [ ] 7.3 Assign the preceding year when a row's month exceeds the statement month
-- [ ] 7.4 Raise a clear error when dates lack a year and no statement year can be found
-- [ ] 7.5 Test the January-statement / December-row rollover
+## 7. Public Entry Point
+- [ ] 7.1 Add `parse_statement(path) -> list[dict]` composing: open → detect profile → `page_lines` per page → boilerplate removal → `rows_from_lines`
+- [ ] 7.2 Confirm the return contract stays `list[{date, description, amount}]` so `TransactionService` needs no change
 
-## 8. Public Entry Point
-- [ ] 8.1 Add `parse_statement(path) -> list[dict]` composing: open → detect profile → `page_lines` per page → boilerplate removal → `rows_from_lines`
-- [ ] 8.2 Confirm the return contract stays `list[{date, description, amount}]` so `TransactionService` needs no change
+## 8. Import Preview
+- [ ] 8.1 Add a `ttk.Treeview` to `UploadDialog` showing each parsed row's date, description, and amount
+- [ ] 8.2 Show detected bank name, transaction count, and sum of amounts
+- [ ] 8.3 Split `_on_upload` (`upload.py:49-74`) into parse-and-preview, then a confirm action that calls `import_transactions`
+- [ ] 8.4 Show a clear message and write nothing when parsing yields zero transactions
+- [ ] 8.5 Verify cancelling writes nothing to the database
 
-## 9. Import Preview
-- [ ] 9.1 Add a `ttk.Treeview` to `UploadDialog` showing each parsed row's date, description, and amount
-- [ ] 9.2 Show detected bank name, transaction count, and sum of amounts
-- [ ] 9.3 Split `_on_upload` (`upload.py:49-74`) into parse-and-preview, then a confirm action that calls `import_transactions`
-- [ ] 9.4 Show a clear message and write nothing when parsing yields zero transactions
-- [ ] 9.5 Verify cancelling writes nothing to the database
-
-## 10. Cleanup
-- [ ] 10.1 Delete `parse_bofa_page` and `parse_bofa_statement_pdf`
-- [ ] 10.2 Rewrite `tests/utils/test_extract.py` against the new seam, replacing mocked-page word dicts with token lists where coordinates are irrelevant
-- [ ] 10.3 Update `openspec/project.md`: PDF Format constraint, PDF Statement Import section, File Structure
-- [ ] 10.4 Run `ruff check .` and `pytest`
-- [ ] 10.5 Import a real BofA statement through the preview and confirm the rows, signs, and dates are correct — this resolves both Open Questions in `design.md`
+## 9. Cleanup and Verification
+- [ ] 9.1 Delete `parse_bofa_page` and `parse_bofa_statement_pdf`
+- [ ] 9.2 Port `tests/utils/test_extract.py` to the new seam, replacing mocked-page word dicts with token lists where coordinates are irrelevant — keep the existing assertions unchanged, since BofA behavior is not meant to change
+- [ ] 9.3 Update `openspec/project.md`: PDF Format constraint, PDF Statement Import section, File Structure
+- [ ] 9.4 Run `ruff check .` and `pytest`
+- [ ] 9.5 Import a real BofA checking statement through the preview and confirm rows, signs, and dates match what the previous parser produced
