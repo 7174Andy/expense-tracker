@@ -100,9 +100,15 @@ The application follows a repository pattern with clear separation of concerns:
 - Auto-categorization: When a merchant-category mapping is updated, all uncategorized transactions are automatically re-evaluated
 
 **PDF Statement Import:**
-- `parse_bofa_statement_pdf()` ([expense_tracker/utils/extract.py](expense_tracker/utils/extract.py)) extracts transactions from Bank of America PDFs
-- Custom parsing logic groups words by y-position to rebuild table rows (doesn't rely on pdfplumber's table detection)
-- Validates rows by checking for date pattern at start and amount at end
+- `parse_statement()` ([expense_tracker/utils/extract.py](expense_tracker/utils/extract.py)) returns `(profile_name, transactions)` for any statement PDF
+- Parsing is split into a bank-agnostic layout pass and a profile-driven interpretation pass:
+  - `page_lines()` groups words by y-position to rebuild table rows (doesn't rely on pdfplumber's table detection). The only function touching the PDF library.
+  - `remove_boilerplate()` drops lines appearing on every page (headers/footers)
+  - `rows_from_lines()` takes plain token lists and validates rows by checking for a date at the start and an amount at the end
+- `StatementProfile` holds the bank-specific rules: detection substrings, date formats, skip prefixes. A profile is one **(bank, statement type)** pair; `PROFILES` is a flat tuple with no per-bank grouping.
+- `detect_profile()` matches page-1 text first, then PDF metadata, falling back to `GENERIC`. Text outranks metadata because two statement types from one bank share metadata.
+- Adding a bank means appending one `StatementProfile` — no new function or branch.
+- `UploadDialog` previews parsed rows and requires confirmation before writing.
 
 ### GUI Architecture
 
