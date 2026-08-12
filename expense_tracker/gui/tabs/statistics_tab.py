@@ -6,6 +6,22 @@ from tkinter import ttk
 from expense_tracker.services.statistics import StatisticsService
 
 
+def adjacent_month(
+    months: list[tuple[int, int]], current: tuple[int, int], step: int
+) -> tuple[int, int] | None:
+    """Nearest month with data in the given direction, or None at either end.
+
+    Months are sparse - a gap between statements (January, then July) is normal.
+    Stepping by one calendar month instead would strand every month behind the
+    gap, since the adjacent month has no data to navigate to.
+    """
+    ordered = sorted(months)
+    if current not in ordered:
+        return None
+    i = ordered.index(current) + step
+    return ordered[i] if 0 <= i < len(ordered) else None
+
+
 class StatisticsTab(tk.Frame):
     def __init__(self, master, statistics_service: StatisticsService):
         super().__init__(master)
@@ -293,21 +309,18 @@ class StatisticsTab(tk.Frame):
         self.month_label.config(text=f"{month_name} {self._current_year}")
         self._update_button_states()
 
+    def _adjacent_month(self, step: int) -> tuple[int, int] | None:
+        return adjacent_month(
+            self._months_with_data, (self._current_year, self._current_month), step
+        )
+
     def _has_previous_month(self) -> bool:
-        """Check if there's data in the previous month."""
-        if self._current_month == 1:
-            prev_year, prev_month = self._current_year - 1, 12
-        else:
-            prev_year, prev_month = self._current_year, self._current_month - 1
-        return (prev_year, prev_month) in self._months_with_data
+        """Check if there's an earlier month with data."""
+        return self._adjacent_month(-1) is not None
 
     def _has_next_month(self) -> bool:
-        """Check if there's data in the next month."""
-        if self._current_month == 12:
-            next_year, next_month = self._current_year + 1, 1
-        else:
-            next_year, next_month = self._current_year, self._current_month + 1
-        return (next_year, next_month) in self._months_with_data
+        """Check if there's a later month with data."""
+        return self._adjacent_month(1) is not None
 
     def _update_button_states(self):
         """Enable/disable navigation buttons based on data availability."""
@@ -323,25 +336,20 @@ class StatisticsTab(tk.Frame):
         else:
             self.next_button.config(state=tk.DISABLED)
 
-    def _previous_month(self):
-        """Navigate to previous month."""
-        if self._current_month == 1:
-            self._current_month = 12
-            self._current_year -= 1
-        else:
-            self._current_month -= 1
+    def _go_to_month(self, step: int):
+        """Jump to the nearest month with data, skipping any gap."""
+        target = self._adjacent_month(step)
+        if target is None:
+            return
+        self._current_year, self._current_month = target
         self._update_header_label()
         self._update_metrics()
 
+    def _previous_month(self):
+        self._go_to_month(-1)
+
     def _next_month(self):
-        """Navigate to next month."""
-        if self._current_month == 12:
-            self._current_month = 1
-            self._current_year += 1
-        else:
-            self._current_month += 1
-        self._update_header_label()
-        self._update_metrics()
+        self._go_to_month(1)
 
     def _update_metrics(self):
         """Update metric displays with current month data."""
@@ -396,5 +404,15 @@ class StatisticsTab(tk.Frame):
         self._draw_category_chart()
 
     def refresh(self):
-        """Refresh statistics when tab becomes active."""
+        """Refresh statistics when tab becomes active.
+
+        Re-reads the months with data, so a statement imported during this
+        session becomes reachable without restarting the app.
+        """
+        self._months_with_data = self.statistics_service.get_available_months()
+        if (self._current_year, self._current_month) not in self._months_with_data:
+            self._current_year, self._current_month = (
+                self.statistics_service.get_latest_available_month()
+            )
+        self._update_header_label()
         self._update_metrics()
