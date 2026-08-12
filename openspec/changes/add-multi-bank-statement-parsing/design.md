@@ -85,6 +85,18 @@ The design ships nothing that no available statement exercises. Year inference w
 
 The cost of this discipline is that the first credit-card statement imports its purchases as income. That is accepted because the preview makes it visible before anything is written, and because guessing a sign convention for a statement format nobody has read is not meaningfully safer than not having the field at all.
 
+### Decision 6: One preprocessing step, and it is not one of monopoly's.
+
+Monopoly preprocesses via `PdfConfig` before any text is read: `page_range` (slice pages), `page_bbox` (`page.set_cropbox()` per bank), `remove_vertical_text` (redact where `line["dir"] != (1, 0)`), OCR through `ocrmypdf` when a page has under 10 characters, and decryption via `unlock_document()`. This design adopts none of them, and adds one they lack: dropping lines repeated on every page.
+
+The divergence follows from opposite architectures. Monopoly's `PdfPage.lines` is `raw_text.split("\n")` — it delegates layout reconstruction to `pdftotext`, then applies a strict per-bank `transaction_pattern` regex that rejects footers on its own. This design reconstructs lines from word coordinates and applies one permissive generic rule, so junk must be removed *before* interpretation rather than rejected during it. Boilerplate removal is load-bearing here; monopoly's steps are load-bearing for a `pdftotext` pipeline this project does not have.
+
+Per step: `page_range` is unnecessary because the date-and-amount row filter already discards cover and terms pages. `remove_vertical_text` is unnecessary because vertical marginalia stacks characters at distinct y-values, producing one-token lines that the existing `len(tokens) < 3` guard drops — pdfplumber itself does not filter by text direction (no `upright` parameter; `line_dir_rotated`/`char_dir_rotated` retain rotated text). OCR and decryption are Non-Goals above.
+
+`page_bbox` is the one with genuine value — cropping marketing sidebars and legal columns. It is deferred because choosing a bounding box requires a statement whose junk survives the existing filters; guessing one risks cropping out transactions. If junk ever survives, adding an optional `bbox` field to `StatementProfile` and calling `page.crop()` in `page_lines` is the next preprocessing step.
+
+Also noted for later: monopoly's `StatementConfig.transaction_bound` is an x-coordinate threshold separating debit and credit columns. `page_lines` already has `x0` for every word and discards it after sorting, so a two-column statement is addressable without new extraction work.
+
 ## Risks / Trade-offs
 
 - **`GENERIC` silently produces wrong rows for an unknown bank.** → Preview requires confirmation before any write; the user sees count, sum, and rows.
