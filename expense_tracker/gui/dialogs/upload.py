@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
 
 from expense_tracker.core.models import Transaction
 from expense_tracker.services.transaction import TransactionService

@@ -97,7 +97,7 @@ def test_page_lines_handles_empty_page():
 
 def test_profile_is_immutable():
     with pytest.raises(FrozenInstanceError):
-        setattr(BOFA_CHECKING, "name", "Something Else")
+        BOFA_CHECKING.name = "Something Else"  # type: ignore[misc]
 
 
 def test_generic_is_not_registered():
