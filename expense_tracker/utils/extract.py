@@ -30,6 +30,10 @@ class StatementProfile:
 
 BOFA_CHECKING = StatementProfile(
     name="BofA Checking",
+    # ponytail: page-text substring only - the metadata producer string is
+    # unknown because no BofA PDF was available. Add it here once one can be
+    # inspected. Worst case today is a fall through to GENERIC, which parses
+    # BofA identically (same date format, same skip prefixes).
     detect=("Bank of America",),
     date_formats=("%m/%d/%y",),
     skip=("total ",),
