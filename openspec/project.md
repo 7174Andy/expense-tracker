@@ -71,16 +71,20 @@ Personal expense tracker desktop application that helps users manage their finan
 - **Auto-Categorization**: When merchant-category mapping is updated, all uncategorized transactions are automatically re-evaluated
 
 ### PDF Statement Import
-- **Supported Format**: Bank of America PDF statements
-- **Parsing Logic**: Custom parsing that groups words by y-position to rebuild table rows
-- **Validation**: Rows validated by checking for date pattern at start and amount at end
+- **Supported Format**: Any statement whose rows start with a date and end with an amount. Bank of America checking has a tested profile; others fall back to `GENERIC`.
+- **Statement Profiles**: `StatementProfile` is one **(bank, statement type)** pair holding detection substrings, date formats, and skip prefixes. `PROFILES` is a flat tuple — no per-bank grouping level. Adding a bank is a one-entry append.
+- **Detection**: page-1 text first, then PDF metadata, else `GENERIC`. Text outranks metadata because statement types from one bank share metadata. `GENERIC` is never registered in `PROFILES` (its empty `detect` would match everything).
+- **Parsing Logic**: split into a bank-agnostic layout pass (`page_lines`, groups words by y-position) and a profile-driven interpretation pass (`rows_from_lines`, takes plain token lists)
+- **Preprocessing**: `remove_boilerplate` drops lines present on every page
+- **Validation**: Rows validated by checking for date pattern at start and amount at end; the user previews all parsed rows before anything is written
 - **Does NOT** rely on pdfplumber's table detection
+- **Out of scope**: OCR, encrypted PDFs, year-less date formats, credit-card sign conventions
 
 ## Important Constraints
 - **Python Version**: Requires Python 3.11 or higher
 - **GUI Framework**: Must use Tkinter (cross-platform compatibility)
 - **Database**: SQLite only (no external database server)
-- **PDF Format**: Currently only supports Bank of America statement format
+- **PDF Format**: Text-layer PDFs only (no OCR, no encrypted files). Bank of America checking is the only tested profile; other banks are attempted via `GENERIC`.
 - **Single User**: Desktop application designed for single-user local use
 - **Thread Safety**: SQLite connections use `check_same_thread=False` for GUI compatibility
 
@@ -101,7 +105,7 @@ expense_tracker/
 ├── services/
 │   └── merchant.py         # Merchant categorization business logic
 ├── utils/
-│   ├── extract.py          # PDF statement parsing
+│   ├── extract.py          # PDF statement parsing (profiles, layout, rows)
 │   └── merchant_normalizer.py  # Merchant name normalization
 ├── gui/
 │   ├── main_window.py      # Main application window
