@@ -89,6 +89,13 @@ class TransactionRepository:
                 transactions.append(transaction)
         return transactions
 
+    def get_all_categories(self) -> list[str]:
+        """Returns every distinct category currently in use, alphabetically."""
+        rows = self.conn.execute(
+            "SELECT DISTINCT category FROM transactions ORDER BY category COLLATE NOCASE"
+        )
+        return [row["category"] for row in rows.fetchall()]
+
     def count_all_transactions(self) -> int:
         row = self.conn.execute("SELECT COUNT(*) FROM transactions")
         return row.fetchone()[0]

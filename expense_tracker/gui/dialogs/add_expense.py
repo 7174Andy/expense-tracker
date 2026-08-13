@@ -26,6 +26,7 @@ class AddExpenseDialog(tk.Toplevel):
             submit_text="Add",
             on_submit=self._on_add,
             on_cancel=self._on_cancel,
+            categories=transaction_service.get_categories(),
         )
         self.bind("<Escape>", lambda e: self._on_cancel())
 
