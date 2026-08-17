@@ -11,6 +11,25 @@ from expense_tracker.services.transaction import TransactionService
 from expense_tracker.services.statistics import StatisticsService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
+def _center_combobox_arrow(style) -> None:
+    """Center the Combobox dropdown arrow vertically.
+
+    ttkbootstrap 1.18 lays the arrow out with sticky="s", which parks it on the
+    bottom edge of the field instead of the centerline. Rewrite that one element.
+    """
+
+    def recenter(elements):
+        for name, opts in elements:
+            if name == "Combobox.downarrow":
+                opts["sticky"] = "e"
+            if "children" in opts:
+                recenter(opts["children"])
+        return elements
+
+    style.configure("TCombobox")  # force ttkbootstrap's lazy style build
+    style.layout("TCombobox", recenter(style.layout("TCombobox")))
+
+
 def main():
     """Start the Expense Tracker application."""
 
@@ -39,7 +58,7 @@ def main():
     try:
         import ttkbootstrap as tb
 
-        tb.Style("darkly")
+        _center_combobox_arrow(tb.Style("darkly"))
     except Exception:
         ttk.Style()
     MainWindow(root, transaction_repo, transaction_service, statistics_service)

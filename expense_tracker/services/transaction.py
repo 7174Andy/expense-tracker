@@ -55,6 +55,10 @@ class TransactionService:
             return True
         return False
 
+    def get_categories(self) -> list[str]:
+        """All categories already in use, for populating pickers."""
+        return self.transaction_repo.get_all_categories()
+
     def suggest_category(self, description: str, amount: float) -> str:
         """Suggest a category for a transaction based on merchant mappings."""
         return self.merchant_service.categorize_merchant(description, amount)

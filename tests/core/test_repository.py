@@ -1715,3 +1715,24 @@ def test_search_by_keyword_limit_zero(in_memory_repo):
 
     result = repo.search_by_keyword("Amazon", limit=0, offset=0)
     assert result == []
+
+
+def test_get_all_categories_deduplicates_and_sorts(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    for category in ("Shopping", "food", "Shopping", "Bills"):
+        repo.add_transaction(
+            Transaction(
+                id=None,
+                date=date.fromisoformat("2023-01-05"),
+                amount=-10.0,
+                category=category,
+                description="x",
+            )
+        )
+
+    assert repo.get_all_categories() == ["Bills", "food", "Shopping"]
+
+
+def test_get_all_categories_empty(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    assert repo.get_all_categories() == []
