@@ -1556,6 +1556,45 @@ def test_get_all_transactions_by_category_empty(in_memory_repo):
     assert result == []
 
 
+def test_get_all_transactions_by_category_pagination(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    for day in range(1, 6):
+        repo.add_transaction(
+            Transaction(
+                id=None,
+                date=date(2023, 1, day),
+                amount=-10.0,
+                category="Food",
+                description=f"Meal {day}",
+            )
+        )
+
+    page = repo.get_all_transactions_by_category("Food", limit=2, offset=2)
+    assert len(page) == 2
+    # Ordered by date DESC, so offset 2 skips Jan 5 and Jan 4
+    assert [t.date.day for t in page] == [3, 2]
+
+    # Defaults return everything (existing callers unchanged)
+    assert len(repo.get_all_transactions_by_category("Food")) == 5
+
+
+def test_count_transactions_by_category(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    for day in range(1, 4):
+        repo.add_transaction(
+            Transaction(
+                id=None,
+                date=date(2023, 1, day),
+                amount=-10.0,
+                category="Food",
+                description=f"Meal {day}",
+            )
+        )
+
+    assert repo.count_transactions_by_category("Food") == 3
+    assert repo.count_transactions_by_category("NonExistent") == 0
+
+
 def test_get_monthly_cashflow_trend_with_data(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     # Add transactions across 3 months

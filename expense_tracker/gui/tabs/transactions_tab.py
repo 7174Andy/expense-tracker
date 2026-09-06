@@ -7,6 +7,7 @@ from expense_tracker.core.transaction_repository import TransactionRepository
 from expense_tracker.services.transaction import TransactionService
 from expense_tracker.gui.dialogs.add_expense import AddExpenseDialog
 from expense_tracker.gui.dialogs.edit_expense import EditExpenseDialog
+from expense_tracker.gui.dialogs.filter import FilterDialog
 from expense_tracker.gui.dialogs.upload import UploadDialog
 
 
@@ -27,6 +28,7 @@ class TransactionsTab(tk.Frame):
         self._total_transactions = 0
         self._search_keyword: str | None = None
         self._filter_date: date | None = None
+        self._filter_category: str | None = None
 
         self.pack(fill=tk.BOTH, expand=True)
         self._build_toolbar()
@@ -105,6 +107,20 @@ class TransactionsTab(tk.Frame):
                 offset=offset,
             )
             self.search_indicator.config(text=f"Search: {self._search_keyword}")
+        elif self._filter_category:
+            self._total_transactions = (
+                self.transaction_repo.count_transactions_by_category(
+                    self._filter_category
+                )
+            )
+            transactions = self.transaction_repo.get_all_transactions_by_category(
+                self._filter_category,
+                limit=self._page_size,
+                offset=offset,
+            )
+            self.search_indicator.config(
+                text=f"Filtered by category: {self._filter_category}"
+            )
         else:
             self._total_transactions = self.transaction_repo.count_all_transactions()
             transactions = self.transaction_repo.get_all_transactions(
@@ -112,6 +128,10 @@ class TransactionsTab(tk.Frame):
                 offset=offset,
             )
             self.search_indicator.config(text="")
+
+        self.filter_button.config(
+            style="primary.TButton" if self._filter_category else "Link.TButton"
+        )
 
         for transaction in transactions:
             self.tree.insert(
@@ -164,6 +184,14 @@ class TransactionsTab(tk.Frame):
         search_entry = ttk.Entry(bar, textvariable=self.qvar, width=30)
         search_entry.pack(side=tk.LEFT, padx=5, pady=5)
         search_entry.bind("<Return>", lambda _: self._search_transactions())
+        # Link/primary styles come from ttkbootstrap (transparent/blue); with
+        # plain ttk both fall back to the default TButton look. The capital-L
+        # "Link.TButton" is the name ttkbootstrap registers — a lowercase
+        # "link.TButton" silently resolves to an unstyled button.
+        self.filter_button = ttk.Button(
+            bar, text="▽", style="Link.TButton", command=self._open_filter_dialog
+        )
+        self.filter_button.pack(side=tk.LEFT, pady=5)
         ttk.Button(bar, text="Search", command=self._search_transactions).pack(
             side=tk.LEFT, padx=5, pady=5
         )
@@ -236,12 +264,15 @@ class TransactionsTab(tk.Frame):
             return
 
         self._search_keyword = keyword
+        self._filter_date = None  # Filters are mutually exclusive
+        self._reset_category_filter()
         self._current_page = 0  # Reset to first page
         self.refresh()
 
     def _clear_search(self):
         self._search_keyword = None
         self._filter_date = None  # Also clear date filter
+        self._reset_category_filter()
         self.qvar.set("")  # Clear the search entry field
         self._current_page = 0  # Reset to first page
         self.refresh()
@@ -250,6 +281,26 @@ class TransactionsTab(tk.Frame):
         """Filter transactions by a specific date."""
         self._filter_date = target_date
         self._search_keyword = None  # Clear search when filtering by date
+        self._reset_category_filter()
+        self.qvar.set("")  # Clear the search entry field
+        self._current_page = 0  # Reset to first page
+        self.refresh()
+
+    def _reset_category_filter(self):
+        self._filter_category = None
+
+    def _open_filter_dialog(self):
+        self.main_window._open_dialog(
+            FilterDialog,
+            self.transaction_service.get_categories(),
+            self._filter_category,
+            self._filter_by_category,
+        )
+
+    def _filter_by_category(self, category: str | None):
+        self._filter_category = category
+        self._search_keyword = None  # Filters are mutually exclusive
+        self._filter_date = None
         self.qvar.set("")  # Clear the search entry field
         self._current_page = 0  # Reset to first page
         self.refresh()

@@ -77,10 +77,13 @@ class TransactionRepository:
                 transactions.append(transaction)
         return transactions
 
-    def get_all_transactions_by_category(self, category: str) -> list[Transaction]:
+    def get_all_transactions_by_category(
+        self, category: str, limit: int | None = None, offset: int = 0
+    ) -> list[Transaction]:
         rows = self.conn.execute(
-            "SELECT * FROM transactions WHERE category = ? ORDER BY date DESC",
-            (category,),
+            # LIMIT -1 means unlimited in SQLite, so None keeps returning all rows
+            "SELECT * FROM transactions WHERE category = ? ORDER BY date DESC LIMIT ? OFFSET ?",
+            (category, limit if limit is not None else -1, offset),
         )
         transactions: list[Transaction] = []
         for row in rows.fetchall():
@@ -88,6 +91,12 @@ class TransactionRepository:
             if transaction:
                 transactions.append(transaction)
         return transactions
+
+    def count_transactions_by_category(self, category: str) -> int:
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM transactions WHERE category = ?", (category,)
+        )
+        return row.fetchone()[0]
 
     def get_all_categories(self) -> list[str]:
         """Returns every distinct category currently in use, alphabetically."""
