@@ -11,23 +11,42 @@ from expense_tracker.services.transaction import TransactionService
 from expense_tracker.services.statistics import StatisticsService
 from expense_tracker.utils.merchant_normalizer import normalize_merchant
 
-def _center_combobox_arrow(style) -> None:
-    """Center the Combobox dropdown arrow vertically.
+def _fix_combobox_arrow(style) -> None:
+    """Patch two ttkbootstrap 1.18 Combobox arrow quirks.
 
-    ttkbootstrap 1.18 lays the arrow out with sticky="s", which parks it on the
-    bottom edge of the field instead of the centerline. Rewrite that one element.
+    The arrow is an image element. Its sticky="s" parks it on the bottom edge
+    of the field instead of the centerline, and its focus/hover/pressed image
+    is drawn in colors.primary (#375a7f on darkly), which is invisible against
+    the readonly field background (#555555). Swap in an arrow element that
+    keeps the input foreground color in every enabled state, centered on the
+    field edge.
     """
-
-    def recenter(elements):
-        for name, opts in elements:
-            if name == "Combobox.downarrow":
-                opts["sticky"] = "e"
-            if "children" in opts:
-                recenter(opts["children"])
-        return elements
-
     style.configure("TCombobox")  # force ttkbootstrap's lazy style build
-    style.layout("TCombobox", recenter(style.layout("TCombobox")))
+    builder = style._get_builder()
+    colors = style.colors
+    disabled = colors.border if builder.is_light_theme else colors.selectbg
+    # (color, direction) grid of image names; rows: normal/disabled/active
+    arrows = builder.create_simple_arrow_assets(colors.inputfg, disabled, colors.inputfg)
+    style.element_create(
+        "Combobox.downarrow.visible",
+        "image",
+        arrows[0][1],
+        ("disabled", arrows[1][1]),
+    )
+    style.layout("TCombobox", _use_visible_downarrow(style.layout("TCombobox")))
+
+
+def _use_visible_downarrow(elements):
+    """Rewrite a Combobox layout to use the always-visible arrow element."""
+    fixed = []
+    for name, opts in elements:
+        if name == "Combobox.downarrow":
+            name = "Combobox.downarrow.visible"
+            opts["sticky"] = "e"
+        if "children" in opts:
+            opts["children"] = _use_visible_downarrow(opts["children"])
+        fixed.append((name, opts))
+    return fixed
 
 
 def main():
@@ -58,7 +77,7 @@ def main():
     try:
         import ttkbootstrap as tb
 
-        _center_combobox_arrow(tb.Style("darkly"))
+        _fix_combobox_arrow(tb.Style("darkly"))
     except Exception:
         ttk.Style()
     MainWindow(root, transaction_repo, transaction_service, statistics_service)
