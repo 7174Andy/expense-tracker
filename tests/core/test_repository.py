@@ -1595,6 +1595,50 @@ def test_count_transactions_by_category(in_memory_repo):
     assert repo.count_transactions_by_category("NonExistent") == 0
 
 
+def _add_food_across_months(repo: TransactionRepository):
+    """Food transactions in Jan and Feb 2023, plus a Jan Shopping one."""
+    for txn_date, category, description in [
+        (date(2023, 1, 5), "Food", "Jan groceries"),
+        (date(2023, 1, 31), "Food", "Jan restaurant"),
+        (date(2023, 2, 1), "Food", "Feb groceries"),
+        (date(2023, 1, 10), "Shopping", "Jan clothes"),
+    ]:
+        repo.add_transaction(
+            Transaction(
+                id=None,
+                date=txn_date,
+                amount=-10.0,
+                category=category,
+                description=description,
+            )
+        )
+
+
+def test_get_all_transactions_by_category_date_range(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    _add_food_across_months(repo)
+
+    result = repo.get_all_transactions_by_category(
+        "Food", start_date=date(2023, 1, 1), end_date=date(2023, 2, 1)
+    )
+    # End date is exclusive: Feb 1 transaction excluded
+    assert [t.description for t in result] == ["Jan restaurant", "Jan groceries"]
+
+
+def test_count_transactions_by_category_date_range(in_memory_repo):
+    repo: TransactionRepository = in_memory_repo
+    _add_food_across_months(repo)
+
+    assert (
+        repo.count_transactions_by_category(
+            "Food", start_date=date(2023, 1, 1), end_date=date(2023, 2, 1)
+        )
+        == 2
+    )
+    # Without a range, all months count (existing callers unchanged)
+    assert repo.count_transactions_by_category("Food") == 3
+
+
 def test_get_monthly_cashflow_trend_with_data(in_memory_repo):
     repo: TransactionRepository = in_memory_repo
     # Add transactions across 3 months

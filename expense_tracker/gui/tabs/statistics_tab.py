@@ -23,9 +23,10 @@ def adjacent_month(
 
 
 class StatisticsTab(tk.Frame):
-    def __init__(self, master, statistics_service: StatisticsService):
+    def __init__(self, master, statistics_service: StatisticsService, main_window):
         super().__init__(master)
         self.statistics_service = statistics_service
+        self.main_window = main_window
 
         # State: the latest month and year where the record is available
         latest_year, latest_month = self.statistics_service.get_latest_available_month()
@@ -227,6 +228,15 @@ class StatisticsTab(tk.Frame):
         self.chart_canvas = tk.Canvas(chart_frame, bg="#2b2b2b", highlightthickness=0)
         self.chart_canvas.pack(fill=tk.X)
 
+        # Tag bindings live on the canvas, not the items, so setting them once
+        # here covers every bar redrawn later with the "bar_row" tag.
+        self.chart_canvas.tag_bind(
+            "bar_row", "<Enter>", lambda e: self.chart_canvas.config(cursor="hand2")
+        )
+        self.chart_canvas.tag_bind(
+            "bar_row", "<Leave>", lambda e: self.chart_canvas.config(cursor="")
+        )
+
     def _draw_category_chart(self):
         """Draw horizontal bar chart of spending by category."""
         self.chart_canvas.delete("all")
@@ -270,6 +280,8 @@ class StatisticsTab(tk.Frame):
         for i, (category, amount) in enumerate(breakdown):
             y = top_margin + i * (bar_height + bar_gap)
             color = self._bar_colors[i % len(self._bar_colors)]
+            row_tag = f"cat{i}"
+            tags = (row_tag, "bar_row")
 
             # Category label (right-aligned)
             self.chart_canvas.create_text(
@@ -279,6 +291,7 @@ class StatisticsTab(tk.Frame):
                 fill="#ffffff",
                 font=("Arial", 11),
                 anchor="e",
+                tags=tags,
             )
 
             # Bar
@@ -291,6 +304,7 @@ class StatisticsTab(tk.Frame):
                 y + bar_height,
                 fill=color,
                 outline="",
+                tags=tags,
             )
 
             # Amount label
@@ -301,6 +315,16 @@ class StatisticsTab(tk.Frame):
                 fill="#ffffff",
                 font=("Arial", 11),
                 anchor="w",
+                tags=tags,
+            )
+
+            # Click a row to see its transactions for this month
+            self.chart_canvas.tag_bind(
+                row_tag,
+                "<Button-1>",
+                lambda e, c=category: self.main_window.show_transactions_for_category_month(
+                    c, self._current_year, self._current_month
+                ),
             )
 
     def _update_header_label(self):

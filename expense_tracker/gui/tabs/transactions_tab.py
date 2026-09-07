@@ -1,3 +1,4 @@
+import calendar
 import math
 import tkinter as tk
 from datetime import date
@@ -5,6 +6,7 @@ from tkinter import ttk, messagebox
 
 from expense_tracker.core.transaction_repository import TransactionRepository
 from expense_tracker.services.transaction import TransactionService
+from expense_tracker.utils.date import month_date_range
 from expense_tracker.gui.dialogs.add_expense import AddExpenseDialog
 from expense_tracker.gui.dialogs.edit_expense import EditExpenseDialog
 from expense_tracker.gui.dialogs.filter import FilterDialog
@@ -29,6 +31,8 @@ class TransactionsTab(tk.Frame):
         self._search_keyword: str | None = None
         self._filter_date: date | None = None
         self._filter_category: str | None = None
+        # (year, month) narrowing the category filter, set by the Statistics chart
+        self._filter_month: tuple[int, int] | None = None
 
         self.pack(fill=tk.BOTH, expand=True)
         self._build_toolbar()
@@ -108,19 +112,27 @@ class TransactionsTab(tk.Frame):
             )
             self.search_indicator.config(text=f"Search: {self._search_keyword}")
         elif self._filter_category:
+            start_date = end_date = None
+            indicator = f"Filtered by category: {self._filter_category}"
+            if self._filter_month:
+                year, month = self._filter_month
+                start_date, end_date = month_date_range(year, month)
+                indicator += f" ({calendar.month_name[month]} {year})"
             self._total_transactions = (
                 self.transaction_repo.count_transactions_by_category(
-                    self._filter_category
+                    self._filter_category,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
             )
             transactions = self.transaction_repo.get_all_transactions_by_category(
                 self._filter_category,
                 limit=self._page_size,
                 offset=offset,
+                start_date=start_date,
+                end_date=end_date,
             )
-            self.search_indicator.config(
-                text=f"Filtered by category: {self._filter_category}"
-            )
+            self.search_indicator.config(text=indicator)
         else:
             self._total_transactions = self.transaction_repo.count_all_transactions()
             transactions = self.transaction_repo.get_all_transactions(
@@ -288,6 +300,17 @@ class TransactionsTab(tk.Frame):
 
     def _reset_category_filter(self):
         self._filter_category = None
+        self._filter_month = None
+
+    def filter_by_category_month(self, category: str, year: int, month: int):
+        """Filter to a category within one month (from the Statistics chart)."""
+        self._filter_category = category
+        self._filter_month = (year, month)
+        self._search_keyword = None  # Filters are mutually exclusive
+        self._filter_date = None
+        self.qvar.set("")
+        self._current_page = 0
+        self.refresh()
 
     def _open_filter_dialog(self):
         self.main_window._open_dialog(
@@ -299,6 +322,7 @@ class TransactionsTab(tk.Frame):
 
     def _filter_by_category(self, category: str | None):
         self._filter_category = category
+        self._filter_month = None  # Dialog filter is not month-scoped
         self._search_keyword = None  # Filters are mutually exclusive
         self._filter_date = None
         self.qvar.set("")  # Clear the search entry field
