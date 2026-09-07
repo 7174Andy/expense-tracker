@@ -77,13 +77,34 @@ class TransactionRepository:
                 transactions.append(transaction)
         return transactions
 
+    @staticmethod
+    def _category_filter(
+        category: str, start_date: date | None, end_date: date | None
+    ) -> tuple[str, list]:
+        """WHERE clause and params for a category filter, optionally date-bounded.
+
+        end_date is exclusive, matching the other range queries here.
+        """
+        where = "category = ?"
+        params: list = [category]
+        if start_date is not None and end_date is not None:
+            where += " AND date >= ? AND date < ?"
+            params += [start_date.isoformat(), end_date.isoformat()]
+        return where, params
+
     def get_all_transactions_by_category(
-        self, category: str, limit: int | None = None, offset: int = 0
+        self,
+        category: str,
+        limit: int | None = None,
+        offset: int = 0,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[Transaction]:
+        where, params = self._category_filter(category, start_date, end_date)
         rows = self.conn.execute(
             # LIMIT -1 means unlimited in SQLite, so None keeps returning all rows
-            "SELECT * FROM transactions WHERE category = ? ORDER BY date DESC LIMIT ? OFFSET ?",
-            (category, limit if limit is not None else -1, offset),
+            f"SELECT * FROM transactions WHERE {where} ORDER BY date DESC LIMIT ? OFFSET ?",
+            (*params, limit if limit is not None else -1, offset),
         )
         transactions: list[Transaction] = []
         for row in rows.fetchall():
@@ -92,9 +113,15 @@ class TransactionRepository:
                 transactions.append(transaction)
         return transactions
 
-    def count_transactions_by_category(self, category: str) -> int:
+    def count_transactions_by_category(
+        self,
+        category: str,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> int:
+        where, params = self._category_filter(category, start_date, end_date)
         row = self.conn.execute(
-            "SELECT COUNT(*) FROM transactions WHERE category = ?", (category,)
+            f"SELECT COUNT(*) FROM transactions WHERE {where}", params
         )
         return row.fetchone()[0]
 

@@ -3,6 +3,7 @@ from typing import NamedTuple
 from datetime import date
 
 from expense_tracker.core.transaction_repository import TransactionRepository
+from expense_tracker.utils.date import month_date_range
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +34,7 @@ class StatisticsService:
     @staticmethod
     def _get_month_date_range(year: int, month: int) -> tuple[date, date]:
         """Helper to get start and end date for a given month."""
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1)
-        else:
-            end_date = date(year, month + 1, 1)
-        return start_date, end_date
+        return month_date_range(year, month)
 
     def get_monthly_metrics(self, year: int, month: int) -> MonthlyMetrics:
         """

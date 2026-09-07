@@ -28,7 +28,7 @@ class MainWindow(tk.Frame):
         )
 
         # Create Statistics tab
-        self.statistics_tab = StatisticsTab(self.notebook, statistics_service)
+        self.statistics_tab = StatisticsTab(self.notebook, statistics_service, self)
 
         # Create Heatmap tab
         self.heatmap_tab = HeatmapTab(self.notebook, statistics_service, self)
@@ -86,3 +86,8 @@ class MainWindow(tk.Frame):
         """Switch to Transactions tab with date filter applied."""
         self.notebook.select(0)  # Switch to Transactions tab (index 0)
         self.transactions_tab.filter_by_date(target_date)
+
+    def show_transactions_for_category_month(self, category: str, year: int, month: int):
+        """Switch to Transactions tab filtered to a category within one month."""
+        self.notebook.select(0)  # Switch to Transactions tab (index 0)
+        self.transactions_tab.filter_by_category_month(category, year, month)
