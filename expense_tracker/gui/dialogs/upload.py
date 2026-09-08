@@ -15,7 +15,7 @@ class UploadDialog(tk.Toplevel):
 
         self.file_var = tk.StringVar()
         self.summary_var = tk.StringVar(value="Select a statement, then preview it.")
-        self.parsed: list[dict] = []
+        self.parsed: list[Transaction] = []
 
         self._build_form()
 
@@ -52,6 +52,7 @@ class UploadDialog(tk.Toplevel):
         ):
             self.tree.heading(col, text=text)
             self.tree.column(col, width=width, anchor=anchor)
+        self.tree.tag_configure("duplicate", foreground="gray")
         self.tree.grid(row=3, column=0, columnspan=3, sticky="nsew")
 
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
@@ -104,39 +105,48 @@ class UploadDialog(tk.Toplevel):
             )
             return
 
-        for t in parsed:
+        transactions = [
+            Transaction(
+                id=None,
+                date=t["date"],
+                amount=t["amount"],
+                category="Uncategorized",
+                description=t["description"],
+            )
+            for t in parsed
+        ]
+        duplicates = 0
+        for txn in transactions:
+            is_dup = self.transaction_service.is_duplicate(txn)
+            duplicates += is_dup
             self.tree.insert(
                 "",
                 "end",
-                values=(t["date"], t["description"], f"{t['amount']:,.2f}"),
+                values=(txn.date, txn.description, f"{txn.amount:,.2f}"),
+                tags=("duplicate",) if is_dup else (),
             )
-        total = sum(t["amount"] for t in parsed)
-        self.summary_var.set(
-            f"{profile_name}: {len(parsed)} transaction(s), total {total:,.2f}. "
-            "Review before importing."
-        )
-        self.parsed = parsed
+        total = sum(t.amount for t in transactions)
+        summary = f"{profile_name}: {len(transactions)} transaction(s), total {total:,.2f}."
+        if duplicates == len(transactions):
+            summary += " All already in database — this statement looks already imported."
+        elif duplicates:
+            summary += f" {duplicates} already in database, will be skipped."
+        else:
+            summary += " Review before importing."
+        self.summary_var.set(summary)
+        self.parsed = transactions
         self.import_button.configure(state="normal")
 
     def _on_import(self):
         if not self.parsed:
             return
         try:
-            transactions = [
-                Transaction(
-                    id=None,
-                    date=t["date"],
-                    amount=t["amount"],
-                    category="Uncategorized",
-                    description=t["description"],
-                )
-                for t in self.parsed
-            ]
-            imported = self.transaction_service.import_transactions(transactions)
-            messagebox.showinfo(
-                "Success",
-                f"Imported {imported} transaction(s) from bank statement.",
-            )
+            imported = self.transaction_service.import_transactions(self.parsed)
+            skipped = len(self.parsed) - imported
+            message = f"Imported {imported} transaction(s) from bank statement."
+            if skipped:
+                message += f" Skipped {skipped} duplicate(s)."
+            messagebox.showinfo("Success", message)
             self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to import bank statement: {e}")
