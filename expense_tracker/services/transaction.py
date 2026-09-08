@@ -63,6 +63,10 @@ class TransactionService:
         """Suggest a category for a transaction based on merchant mappings."""
         return self.merchant_service.categorize_merchant(description, amount)
 
+    def is_duplicate(self, transaction: Transaction) -> bool:
+        """True if a transaction with the same date, amount, and description exists."""
+        return self.transaction_repo.transaction_exists(transaction)
+
     def import_transactions(self, transactions: list[Transaction]) -> int:
         """Import transactions with auto-categorization and duplicate detection.
 

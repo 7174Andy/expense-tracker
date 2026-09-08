@@ -209,6 +209,39 @@ def test_import_transactions_categorizes_and_deduplicates(
     assert income_txn.category == "Income"
 
 
+def test_is_duplicate_matches_date_amount_description(
+    transaction_service, in_memory_repo
+):
+    """is_duplicate flags an existing (date, amount, description) regardless of category."""
+    in_memory_repo.add_transaction(
+        Transaction(
+            id=None,
+            date=date(2023, 1, 5),
+            amount=-50.0,
+            category="Shopping",
+            description="AMAZON.COM",
+        )
+    )
+
+    duplicate = Transaction(
+        id=None,
+        date=date(2023, 1, 5),
+        amount=-50.0,
+        category="Uncategorized",
+        description="AMAZON.COM",
+    )
+    fresh = Transaction(
+        id=None,
+        date=date(2023, 1, 6),
+        amount=-50.0,
+        category="Uncategorized",
+        description="AMAZON.COM",
+    )
+
+    assert transaction_service.is_duplicate(duplicate) is True
+    assert transaction_service.is_duplicate(fresh) is False
+
+
 def test_import_transactions_empty_list(transaction_service):
     """Importing empty list returns 0."""
     imported = transaction_service.import_transactions([])
